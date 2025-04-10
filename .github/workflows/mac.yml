@@ -18,14 +18,14 @@ jobs:
 
       - name: Install Chrome Remote Desktop
         run: |
-          powershell -Command "Invoke-WebRequest -Uri 'https://dl.google.com/chrome-remote-desktop/chrome-remote-desktop-host.msi' -OutFile 'chrome-remote-desktop-host.msi'"
-          powershell -Command "Start-Process -FilePath './chrome-remote-desktop-host.msi' -ArgumentList '/quiet', '/norestart' -Wait"
+          powershell -Command "Invoke-WebRequest -Uri 'https://dl.google.com/edgedl/chrome-remote-desktop/chromeremotedesktophost.msi"
+          powershell -Command "Start-Process -FilePath './chromeremotedesktophost.msi' -ArgumentList '/quiet', '/norestart' -Wait"
 
       - name: Configure Chrome Remote Desktop
         env:
           CHROME_REMOTE_DESKTOP_PIN: "9016"
         run: |
-          powershell -Command "Set-Content -Path 'C:\\chrome-remote-desktop-config.txt' -Value 'PIN=${{ env.CHROME_REMOTE_DESKTOP_PIN }}'"
+          powershell -Command "Set-Content -Path 'C:\\chromeremotedesktopconfig.txt' -Value 'PIN=${{ env.CHROME_REMOTE_DESKTOP_PIN }}'"
           powershell -Command "Start-Process -FilePath 'C:\\Program Files (x86)\\Google\\Chrome Remote Desktop\\remoting_start_host.exe' -ArgumentList '--pin=${{ env.CHROME_REMOTE_DESKTOP_PIN }}' -Wait"
 
       - name: Output Access Code
