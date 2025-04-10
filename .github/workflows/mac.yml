@@ -18,7 +18,7 @@ jobs:
 
       - name: Install Chrome Remote Desktop
         run: |
-          powershell -Command "Invoke-WebRequest -Uri 'https://dl.google.com/edgedl/chrome-remote-desktop/chromeremotedesktophost.msi"
+          powershell -Command "Invoke-WebRequest -Uri 'https://dl.google.com/edgedl/chrome-remote-desktop/chromeremotedesktophost.msi'"
           powershell -Command "Start-Process -FilePath './chromeremotedesktophost.msi' -ArgumentList '/quiet', '/norestart' -Wait"
 
       - name: Configure Chrome Remote Desktop
