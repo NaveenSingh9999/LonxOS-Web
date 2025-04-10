@@ -15,9 +15,12 @@ jobs:
         run: |
           brew install --cask google-chrome
 
-      - name: Install Chrome Remote Desktop
+      - name: Install Chrome Remote Desktop Manually
         run: |
-          brew install --cask chrome-remote-desktop
+          curl -o chrome-remote-desktop.dmg https://dl.google.com/chrome-remote-desktop/chrome-remote-desktop.dmg
+          hdiutil attach chrome-remote-desktop.dmg
+          cp -R "/Volumes/Chrome Remote Desktop/Chrome Remote Desktop.app" /Applications/
+          hdiutil detach "/Volumes/Chrome Remote Desktop"
 
       - name: Configure Chrome Remote Desktop
         env:
