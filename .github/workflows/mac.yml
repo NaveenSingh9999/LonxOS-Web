@@ -1,0 +1,36 @@
+name: Setup Chrome Remote Desktop
+
+on:
+  workflow_dispatch: # Allows manual triggering of the workflow
+
+jobs:
+  setup-rdp:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install Chrome Browser
+        run: |
+          brew install --cask google-chrome
+
+      - name: Install Chrome Remote Desktop
+        run: |
+          brew install --cask chrome-remote-desktop
+
+      - name: Configure Chrome Remote Desktop
+        env:
+          CHROME_REMOTE_DESKTOP_PIN: "9016"
+        run: |
+          # Set up Chrome Remote Desktop
+          mkdir -p ~/chrome-remote-desktop
+          echo -e "[Desktop Entry]\nName=Chrome Remote Desktop\nExec=/Applications/Chrome Remote Desktop.app/Contents/MacOS/remoting_me2me_host --host\nType=Application\nTerminal=false" > ~/chrome-remote-desktop/chrome-remote-desktop.desktop
+          chmod +x ~/chrome-remote-desktop/chrome-remote-desktop.desktop
+
+          # Start Chrome Remote Desktop with the default PIN
+          /Applications/Chrome\ Remote\ Desktop.app/Contents/MacOS/remoting_me2me_host --start --pin=$CHROME_REMOTE_DESKTOP_PIN
+
+      - name: Output Access Code
+        run: |
+          echo "Access code for remote desktop is: $CHROME_REMOTE_DESKTOP_PIN"
