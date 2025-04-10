@@ -1,39 +1,33 @@
-name: Setup Chrome Remote Desktop
+name: Setup Chrome Remote Desktop on Windows
 
 on:
   workflow_dispatch: # Allows manual triggering of the workflow
 
 jobs:
   setup-rdp:
-    runs-on: macos-latest
+    runs-on: windows-2022
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Install Chrome Browser
+      - name: Install Google Chrome
         run: |
-          brew install --cask google-chrome
+          powershell -Command "Invoke-WebRequest -Uri 'https://dl.google.com/chrome/install/latest/chrome_installer.exe' -OutFile 'chrome_installer.exe'"
+          powershell -Command "Start-Process -FilePath './chrome_installer.exe' -ArgumentList '/silent', '/install' -Wait"
 
-      - name: Install Chrome Remote Desktop Manually
+      - name: Install Chrome Remote Desktop
         run: |
-          curl -o chrome-remote-desktop.dmg https://dl.google.com/chrome-remote-desktop/chrome-remote-desktop.dmg
-          hdiutil attach chrome-remote-desktop.dmg
-          cp -R "/Volumes/Chrome Remote Desktop/Chrome Remote Desktop.app" /Applications/
-          hdiutil detach "/Volumes/Chrome Remote Desktop"
+          powershell -Command "Invoke-WebRequest -Uri 'https://dl.google.com/chrome-remote-desktop/chrome-remote-desktop-host.msi' -OutFile 'chrome-remote-desktop-host.msi'"
+          powershell -Command "Start-Process -FilePath './chrome-remote-desktop-host.msi' -ArgumentList '/quiet', '/norestart' -Wait"
 
       - name: Configure Chrome Remote Desktop
         env:
           CHROME_REMOTE_DESKTOP_PIN: "9016"
         run: |
-          # Set up Chrome Remote Desktop
-          mkdir -p ~/chrome-remote-desktop
-          echo -e "[Desktop Entry]\nName=Chrome Remote Desktop\nExec=/Applications/Chrome Remote Desktop.app/Contents/MacOS/remoting_me2me_host --host\nType=Application\nTerminal=false" > ~/chrome-remote-desktop/chrome-remote-desktop.desktop
-          chmod +x ~/chrome-remote-desktop/chrome-remote-desktop.desktop
-
-          # Start Chrome Remote Desktop with the default PIN
-          /Applications/Chrome\ Remote\ Desktop.app/Contents/MacOS/remoting_me2me_host --start --pin=$CHROME_REMOTE_DESKTOP_PIN
+          powershell -Command "Set-Content -Path 'C:\\chrome-remote-desktop-config.txt' -Value 'PIN=${{ env.CHROME_REMOTE_DESKTOP_PIN }}'"
+          powershell -Command "Start-Process -FilePath 'C:\\Program Files (x86)\\Google\\Chrome Remote Desktop\\remoting_start_host.exe' -ArgumentList '--pin=${{ env.CHROME_REMOTE_DESKTOP_PIN }}' -Wait"
 
       - name: Output Access Code
         run: |
-          echo "Access code for remote desktop is: $CHROME_REMOTE_DESKTOP_PIN"
+          echo "Access code for remote desktop is: ${{ env.CHROME_REMOTE_DESKTOP_PIN }}"
