@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TylonV Bootloader</title>
+    <style>
+        body {
+            background-color: #000;
+            color: #fff;
+            font-family: 'monospace', 'Courier New', Courier;
+            font-size: 16px;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+        #boot-screen {
+            padding: 20px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        #nano-editor {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #282a36;
+            color: #f8f8f2;
+            border: none;
+            font-family: 'monospace', 'Courier New', Courier;
+            font-size: 16px;
+            padding: 10px;
+            box-sizing: border-box;
+            resize: none;
+            outline: none;
+        }
+        .cursor {
+            animation: blink 1s step-end infinite;
+            display: inline-block;
+            width: 10px;
+            background-color: #fff;
+        }
+        @keyframes blink {
+            from, to { background-color: transparent }
+            50% { background-color: #fff; }
+        }
+        .selected {
+            background-color: #fff;
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div id="boot-screen"></div>
+    <textarea id="nano-editor" style="display: none;"></textarea>
+    <script type="module" src="tylon.js"></script>
+</body>
+</html>

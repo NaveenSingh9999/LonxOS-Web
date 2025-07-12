@@ -1,0 +1,12 @@
+{
+  "boot": {
+    "entries": [
+      {
+        "name": "Lonx OS v1.0",
+        "path": "/os/lonx.limg"
+      }
+    ],
+    "timeout": 10,
+    "default": 0
+  }
+}
