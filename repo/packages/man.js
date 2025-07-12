@@ -40,7 +40,15 @@ DESCRIPTION
         'ls': 'Lists files in a directory.',
         'cat': 'Displays file content.',
         'touch': 'Creates an empty file.',
-        'ps': 'Displays a snapshot of the current processes.'
+        'ps': 'Displays a snapshot of the current processes.',
+        'adt': `NAME
+    adt - Advanced Diagnostic Tool
+
+SYNOPSIS
+    adt [url]
+
+DESCRIPTION
+    Pings a URL and displays connection status and latency.`
     };
 
     const command = args[0];

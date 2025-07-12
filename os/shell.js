@@ -12,6 +12,7 @@ import { getMemoryStats } from './memory.js';
 import { getProcessList } from './process.js';
 import { read, write } from './fs.js';
 import { mim } from './mim.js';
+import * as net from './core/net.js';
 let bootScreen;
 let currentLine = '';
 const commandHistory = [];
@@ -65,7 +66,7 @@ function resolvePath(path) {
     return '/' + newPath.join('/');
 }
 const builtInCommands = {
-    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, mim, ps, cd',
+    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, mim, ps, cd, adt',
     echo: (args) => args.join(' '),
     memstat: () => {
         const stats = getMemoryStats();
@@ -133,6 +134,25 @@ const builtInCommands = {
         }
         return `cd: no such file or directory: ${resolved}`;
     },
+    adt: (args) => __awaiter(void 0, void 0, void 0, function* () {
+        if (args.length < 1) {
+            shellPrint("Usage: adt <url>");
+            return;
+        }
+        const url = args[0];
+        shellPrint(`[adt] Resolving ${url}...`);
+        try {
+            const response = yield net.tryFetch(url); // Use the new resilient fetch
+            const latency = yield net.ping(url); // ping uses tryFetch internally
+            let output = `[adt] Successfully connected to ${url}\n`;
+            output += `      Status: ${response.status} ${response.statusText}\n`;
+            output += `      Latency: ${latency}ms`;
+            shellPrint(output);
+        }
+        catch (e) {
+            shellPrint(`[adt] Error: ${e.message}`);
+        }
+    }),
     mim: (args) => mim(args)
 };
 const lonx_api = {
@@ -145,6 +165,10 @@ const lonx_api = {
     fs: {
         read: read,
         write: write,
+    },
+    net: {
+        tryFetch: net.tryFetch, // Expose the new function
+        ping: net.ping,
     }
 };
 function renderShell() {

@@ -10,6 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 // os/mim.ts
 import { read, write } from './fs.js';
 import { shellPrint } from './shell.js';
+import { tryFetch } from './core/net.js';
 const defaultRepo = '../repo/index.json';
 function getRepos() {
     const sources = read('/etc/mim/sources.list');
@@ -38,22 +39,15 @@ function installPackage(pkgName) {
         const sources = getRepos();
         for (const src of sources) {
             try {
-                const res = yield fetch(src);
-                if (!res.ok) {
-                    shellPrint(`[mim] Failed to fetch from ${src}`);
-                    continue;
-                }
+                const res = yield tryFetch(src); // Use the new resilient fetch
                 const list = yield res.json();
                 const target = list.find((p) => p.name === pkgName);
                 if (target) {
                     shellPrint(`[mim] Downloading ${pkgName}...`);
-                    const baseUrl = src.substring(0, src.lastIndexOf('/') + 1);
-                    const packageUrl = baseUrl + target.url;
-                    const codeRes = yield fetch(packageUrl);
-                    if (!codeRes.ok) {
-                        shellPrint(`[mim] Failed to download package from ${packageUrl}`);
-                        return;
-                    }
+                    // Construct absolute URL if the repo path is relative
+                    const baseUrl = new URL(src, window.location.href).href.replace(/\/[^/]*$/, '/');
+                    const packageUrl = new URL(target.url, baseUrl).href;
+                    const codeRes = yield tryFetch(packageUrl); // Use it again for the package
                     const code = yield codeRes.text();
                     write(`/bin/${pkgName}`, code);
                     shellPrint(`[mim] Installed: ${pkgName} v${target.version}`);
@@ -61,7 +55,7 @@ function installPackage(pkgName) {
                 }
             }
             catch (e) {
-                shellPrint(`[mim] Error processing repo ${src}: ${e}`);
+                shellPrint(`[mim] Error processing repo ${src}: ${e.message}`);
             }
         }
         shellPrint(`[mim] Package not found: ${pkgName}`);

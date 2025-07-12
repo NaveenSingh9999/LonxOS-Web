@@ -1,6 +1,7 @@
 // os/mim.ts
 import { read, write } from './fs.js';
 import { shellPrint } from './shell.js';
+import { tryFetch } from './core/net.js';
 
 const defaultRepo = '../repo/index.json';
 
@@ -33,31 +34,25 @@ async function installPackage(pkgName: string) {
     const sources = getRepos();
     for (const src of sources) {
         try {
-            const res = await fetch(src);
-            if (!res.ok) {
-                shellPrint(`[mim] Failed to fetch from ${src}`);
-                continue;
-            }
+            const res = await tryFetch(src); // Use the new resilient fetch
             const list = await res.json();
             const target = list.find((p: any) => p.name === pkgName);
 
             if (target) {
                 shellPrint(`[mim] Downloading ${pkgName}...`);
-                const baseUrl = src.substring(0, src.lastIndexOf('/') + 1);
-                const packageUrl = baseUrl + target.url;
+                // Construct absolute URL if the repo path is relative
+                const baseUrl = new URL(src, window.location.href).href.replace(/\/[^/]*$/, '/');
+                const packageUrl = new URL(target.url, baseUrl).href;
 
-                const codeRes = await fetch(packageUrl);
-                if (!codeRes.ok) {
-                    shellPrint(`[mim] Failed to download package from ${packageUrl}`);
-                    return;
-                }
+
+                const codeRes = await tryFetch(packageUrl); // Use it again for the package
                 const code = await codeRes.text();
                 write(`/bin/${pkgName}`, code);
                 shellPrint(`[mim] Installed: ${pkgName} v${target.version}`);
                 return;
             }
-        } catch (e) {
-            shellPrint(`[mim] Error processing repo ${src}: ${e}`);
+        } catch (e: any) {
+            shellPrint(`[mim] Error processing repo ${src}: ${e.message}`);
         }
     }
     shellPrint(`[mim] Package not found: ${pkgName}`);

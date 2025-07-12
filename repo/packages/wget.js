@@ -1,6 +1,15 @@
 // packages/wget.js
+/**
+ * Wget - A simple file downloader for Lonx OS.
+ *
+ * Usage: wget <url> [output-filename]
+ *
+ * Downloads a file from a given URL and saves it to the filesystem.
+ * If no output filename is provided, it will try to infer the name from the URL.
+ */
 export default async function main(args, lonx) {
-    const { shell, fs } = lonx;
+    const { shell, fs, net } = lonx;
+
     if (args.length < 1) {
         shell.print("Usage: wget <url> [output-file]");
         return;
@@ -13,44 +22,9 @@ export default async function main(args, lonx) {
     shell.print(`Downloading from ${url}...`);
 
     try {
-        const response = await fetch(url);
-        if (!response.ok) {
-            shell.print(`\nError: Failed to fetch with status ${response.status}`);
-            return;
-        }
-        if (!response.body) {
-            shell.print(`\nError: Response body is not available.`);
-            return;
-        }
-
-        const reader = response.body.getReader();
-        const contentLength = +response.headers.get('Content-Length');
-        let receivedLength = 0;
-        let chunks = [];
-
-        while(true) {
-            const { done, value } = await reader.read();
-            if (done) {
-                break;
-            }
-            chunks.push(value);
-            receivedLength += value.length;
-
-            if (contentLength) {
-                const percent = Math.round((receivedLength / contentLength) * 100);
-                const barWidth = 20;
-                const filledWidth = Math.round(barWidth * (percent / 100));
-                const emptyWidth = barWidth - filledWidth;
-                const progressBar = `[${'#'.repeat(filledWidth)}${'-'.repeat(emptyWidth)}] ${percent}%`;
-                // Use updateLine to show progress on a single line
-                shell.updateLine(`Progress: ${progressBar}`);
-            } else {
-                shell.updateLine(`Downloaded ${receivedLength} bytes...`);
-            }
-        }
-
-        const blob = new Blob(chunks);
-        const data = await blob.text(); // Assuming text, for binary we'd need another approach
+        // Use the resilient tryFetch function from the net core
+        const response = await net.tryFetch(url);
+        const data = await response.text();
 
         // Determine output path
         const fileName = outputArg || url.split('/').pop().split('?')[0] || 'index.html';
