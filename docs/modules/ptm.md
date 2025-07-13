@@ -93,3 +93,5 @@ if (!success) {
 - **Adding Thread Support:** The `Process` interface is ready for a `threadCount`. To implement this, one could create a pool of Web Workers. The `create` method could be modified to spawn a worker and associate it with the process.
 - **Improving the Scheduler:** The `startScheduler` method can be replaced with a more sophisticated algorithm that manages a run queue, allocates time slices, and handles process priorities.
 - **Inter-Process Communication (IPC):** A messaging system could be added to the PTM, allowing processes to send and receive signals or data, for example, by adding `postMessage(pid, message)` and `onMessage(callback)` methods.
+
+<!-- yo -->

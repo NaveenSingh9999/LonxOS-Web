@@ -140,3 +140,5 @@ The PTM will keep the process alive until it is explicitly killed.
 - **`isSudo`:** The `executeCommand` function in the shell accepts an `isSudo` boolean flag. The `sudo` command simply re-calls `executeCommand` for the target program with this flag set to `true`.
 - **Root Access:** Commands can check this flag to perform privileged operations, such as `rm /`.
 - **Permissions:** The filesystem does not yet have a formal permissions model, but this is a planned feature.
+
+<!-- yo -->

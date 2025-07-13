@@ -213,3 +213,5 @@ Once your repository is live, you can add it to Lonx OS using the `mim` command.
 -   It downloads the package from the first repository where it's found.
 
 This system allows for a decentralized and expandable application ecosystem for Lonx OS.
+
+<!-- yo -->

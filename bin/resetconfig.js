@@ -10,3 +10,5 @@ export default function main(args, lonx) {
   localStorage.removeItem("/etc/config.json");
   lonx.shell.print("Global config reset. Please refresh your browser to re-run the onboarding wizard.");
 }
+
+// yo

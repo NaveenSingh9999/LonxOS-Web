@@ -59,3 +59,5 @@ export async function boot() {
     kernelState = 'RUNNING';
     console.log('Lonx has booted successfully.');
 }
+
+// yo

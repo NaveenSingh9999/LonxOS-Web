@@ -59,3 +59,5 @@ export function boot() {
         console.log('Lonx has booted successfully.');
     });
 }
+
+// yo

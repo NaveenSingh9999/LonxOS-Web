@@ -79,3 +79,5 @@ console.log(`RAM: ${stats.used}MB / ${stats.total}MB (${stats.percentUsed}%)`);
 - **Implement a Swap File:** A "swap" could be simulated by moving a process's state into a temporary file in the virtual filesystem when memory is low, and loading it back when needed. This would require adding `swapOut(process)` and `swapIn(pid)` methods.
 - **Add Memory Caching:** A portion of RAM could be designated as a cache for the filesystem to improve read/write performance. The controller would need methods to manage this cache.
 - **Dynamic Memory Allocation:** Processes could be allowed to request more memory *after* they've been created, requiring a `reallocate(pid, newAmount)` method that checks if the additional memory is available.
+
+<!-- yo -->

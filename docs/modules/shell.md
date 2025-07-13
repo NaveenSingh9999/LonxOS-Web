@@ -72,3 +72,5 @@ await executeCommand("ls", ["/"]);
 - **Implement Piping and Redirection:** The `handleShellInput` function would need a much more advanced parser to recognize `|` and `>` tokens. `executeCommand` would need to be modified to handle `stdout` and `stdin` streams for processes, redirecting the output of one process to the input of another.
 - **Improve the Parser:** The command parsing logic could be replaced with a more robust library or a custom implementation that understands quotes, environment variables, and other shell features.
 - **Add Shell Scripting:** To support shell scripts (e.g., `myscript.sh`), the shell would need an interpreter that can execute a sequence of commands from a file, complete with variables, loops, and conditional logic.
+
+<!-- yo -->

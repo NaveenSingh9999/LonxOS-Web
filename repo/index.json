@@ -15,6 +15,7 @@
     "name": "man",
     "desc": "Shows manual of any command",
     "version": "1.0.0",
-    "url": "packages/man.js"
+    "url": "packages/man.js",
+    "_comment": "yo"
   }
 ]

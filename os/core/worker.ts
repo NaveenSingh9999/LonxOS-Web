@@ -27,3 +27,5 @@ self.onmessage = (e: MessageEvent) => {
 
 // Let the main thread know the worker is ready.
 self.postMessage({ status: 'ready' });
+
+// yo

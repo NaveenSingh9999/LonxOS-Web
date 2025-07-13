@@ -48,3 +48,5 @@ async function main(args) {
         shell.print(`wget: An error occurred: ${e.message}`);
     }
 }
+
+// yo
