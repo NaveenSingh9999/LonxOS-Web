@@ -1,37 +1,43 @@
 // os/memory.ts
 
-interface MemoryStats {
-    total: number;
-    used: number;
-    free: number;
-}
+class MemoryController {
+    private totalRAM: number = 0;
+    private usedRAM: number = 0;
 
-let totalMemory: number;
-let usedMemory: number;
-
-export function initMemory(ramSize: number) {
-    totalMemory = ramSize;
-    usedMemory = 10 + Math.random() * 15; // Initial kernel memory usage
-    console.log(`[Memory] Initialized with ${totalMemory}MB total.`);
-}
-
-export function allocateMemory(size: number): boolean {
-    if (usedMemory + size > totalMemory) {
-        return false; // Out of memory
+    init(total: number) {
+        this.totalRAM = total;
+        this.usedRAM = 0; // Reset used RAM on init
+        console.log(`[Memory] Initialized with ${this.totalRAM}MB total.`);
     }
-    usedMemory += size;
-    return true;
+
+    allocate(amount: number): boolean {
+        if (this.usedRAM + amount > this.totalRAM) {
+            return false; // Out of memory
+        }
+        this.usedRAM += amount;
+        return true;
+    }
+
+    free(amount: number): void {
+        this.usedRAM = Math.max(0, this.usedRAM - amount);
+    }
+
+    getUsed(): number {
+        return this.usedRAM;
+    }
+
+    getFree(): number {
+        return this.totalRAM - this.usedRAM;
+    }
+
+    getTotal(): number {
+        return this.totalRAM;
+    }
+
+    getPercentUsed(): number {
+        if (this.totalRAM === 0) return 0;
+        return Math.floor((this.usedRAM / this.totalRAM) * 100);
+    }
 }
 
-export function freeMemory(size: number) {
-    usedMemory -= size;
-    if (usedMemory < 0) usedMemory = 0;
-}
-
-export function getMemoryStats(): MemoryStats {
-    return {
-        total: totalMemory,
-        used: usedMemory,
-        free: totalMemory - usedMemory
-    };
-}
+export const memoryController = new MemoryController();

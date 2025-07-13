@@ -1,9 +1,9 @@
 // os/shell.ts
-import { getMemoryStats } from './memory.js';
-import { getProcessList } from './process.js';
 import { read, write, remove } from './fs.js';
 import { mim } from './mim.js';
 import * as net from './core/net.js';
+import { ptm } from './core/ptm.js';
+import { memoryController } from './memory.js';
 
 let bootScreen: HTMLElement;
 let currentLine = '';
@@ -73,7 +73,7 @@ function resolvePath(path: string): string {
 let isSudo = false; // Global flag for sudo access
 
 // Forward declaration of builtInCommands
-let builtInCommands: { [key: string]: (args: string[], isSudo: boolean) => string | Promise<void> };
+let builtInCommands: { [key: string]: (args: string[], isSudo: boolean, inBackground?: boolean) => string | Promise<void> };
 
 const lonx_api = {
     shell: {
@@ -105,49 +105,76 @@ function renderShell() {
     bootScreen.scrollTop = bootScreen.scrollHeight;
 }
 
-export async function executeCommand(command: string, args: string[]) {
-    if (command in builtInCommands) {
-        try {
-            // The 'sudo' command itself doesn't get sudo privileges, it grants them.
+export async function executeCommand(command: string, args: string[], isSudo = false, inBackground = false) {
+    const fullCommand = `${command} ${args.join(' ')}`;
+    // Default memory for a command process. Could be adjusted based on the command.
+    const requiredMemory = 16; 
+
+    const process = ptm.create(command, requiredMemory, "user", 1, fullCommand);
+
+    if (!process) {
+        shellPrint(`-lonx: ${command}: Not enough memory to execute command.`);
+        return;
+    }
+
+    try {
+        if (command in builtInCommands) {
+            // The 'sudo' command is special; it elevates privileges for the *next* command.
             if (command === 'sudo') {
-                 await builtInCommands[command](args, false);
-                 return;
+                await builtInCommands[command](args, false, inBackground); // isSudo is false, pass inBackground
+                // The sudo command process is finished after it executes the child command.
+                if (ptm.get(process.pid)) ptm.kill(process.pid);
+                return;
             }
-            const result = await builtInCommands[command](args, isSudo);
+            const result = await builtInCommands[command](args, isSudo, inBackground);
             if (result) {
                 shellPrint(result);
             }
-        } catch (e: any) {
-            shellPrint(`Error: ${e.message}`);
-        }
-    } else if (command) {
-        // Try to execute from /bin
-        const binPath = `/bin/${command}`;
-        const scriptContent = read(binPath);
-        if (typeof scriptContent === 'string' && scriptContent.length > 0) {
-            try {
-                const executable = new Function('args', 'lonx_api', 'isSudo', scriptContent);
-                await executable(args, lonx_api, isSudo);
-            } catch (e: any) {
-                if (e.message.includes("export")) {
-                     shellPrint(`Error executing ${command}: This module may be in an old format. Try updating it with 'mim install ${command}'.`);
-                } else {
-                    shellPrint(`Error executing ${command}: ${e.message}`);
+        } else if (command) {
+            // Try to execute from /bin
+            const binPath = `/bin/${command}`;
+            const scriptContent = read(binPath);
+            if (typeof scriptContent === 'string' && scriptContent.length > 0) {
+                try {
+                    const executable = new Function('args', 'lonx_api', 'isSudo', scriptContent);
+                    await executable(args, lonx_api, isSudo);
+                } catch (e: any) {
+                    if (e.message.includes("export")) {
+                         shellPrint(`Error executing ${command}: This module may be in an old format. Try updating it with 'mim install ${command}'.`);
+                    } else {
+                        shellPrint(`Error executing ${command}: ${e.message}`);
+                    }
                 }
+            } else {
+                shellPrint(`Command not found: ${command}`);
             }
-        } else {
-            shellPrint(`Command not found: ${command}`);
+        }
+    } catch (e: any) {
+        shellPrint(`Error: ${e.message}`);
+    } finally {
+        // Clean up the process unless it was started in the background
+        if (ptm.get(process.pid)) {
+            if (inBackground) {
+                shellPrint(`[1] ${process.pid}`); // Basic job notification
+            } else {
+                ptm.kill(process.pid);
+            }
         }
     }
 }
 
 builtInCommands = {
-    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, cd, pwd, adt, sudo',
+    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, kill, jobs, bg, fg, sleep, spin, cd, pwd, adt, sudo',
     echo: (args) => args.join(' '),
     memstat: () => {
-        const stats = getMemoryStats();
-        const processes = getProcessList();
-        return `Total RAM: ${stats.total}MB\nUsed RAM: ${stats.used.toFixed(2)}MB\nRunning Processes: ${processes.length}`;
+        const stats = memoryController;
+        const processes = ptm.list();
+        let output = `Total RAM: ${stats.getTotal()}MB\nUsed RAM: ${stats.getUsed().toFixed(2)}MB\n\n`;
+        output += 'PID\tMEM\tNAME\n';
+        processes.forEach(p => {
+            output += `${p.pid}\t${p.memory}MB\t${p.name}\n`;
+        });
+        return output;
     },
     whoami: () => 'user@lonx',
     reboot: () => {
@@ -194,18 +221,118 @@ builtInCommands = {
         const path = args[0];
         if (!path) return 'rm: missing operand';
         const resolved = resolvePath(path);
-        if (resolved === '/' && !isSudo) return 'rm: cannot remove root directory without sudo';
+        // Allow removing root only with sudo
+        if (resolved === '/' && !isSudo) {
+            return 'rm: cannot remove root directory without sudo';
+        }
+        if (read(resolved) === null) {
+             return `rm: cannot remove '${resolved}': No such file or directory`;
+        }
 
         const success = remove(resolved);
-        return success ? '' : `rm: cannot remove '${resolved}': No such file or directory`;
+        return success ? '' : `rm: cannot remove '${resolved}'`;
     },
-    ps: () => {
-        const processes = getProcessList();
-        let output = 'PID\tNAME\n';
+    ps: (args) => {
+        const processes = ptm.list();
+        let output = 'PID\tPPID\tSTATUS\t\tMEM\tCPU\tTIME\tCOMMAND\n';
+        
+        const formatTime = (seconds: number) => {
+            const min = Math.floor(seconds / 60);
+            const sec = Math.floor(seconds % 60);
+            return `${min.toString().padStart(2, '0')}:${sec.toString().padStart(2, '0')}`;
+        };
+
         processes.forEach(p => {
-            output += `${p.pid}\t${p.name}\n`;
+            const command = p.command ? p.command.substring(0, 20) : p.name;
+            const cpu = (p.cpu || 0).toFixed(2);
+            const time = formatTime(p.cpuTime);
+            output += `${p.pid}\t${p.ppid}\t${p.status.padEnd(10, ' ')}\t${p.memory}MB\t${cpu}%\t${time}\t${command}\n`;
         });
         return output;
+    },
+    kill: (args, isSudo) => {
+        const pidStr = args[0];
+        if (!pidStr) {
+            return 'kill: usage: kill <pid>';
+        }
+        const pid = parseInt(pidStr, 10);
+        if (isNaN(pid)) {
+            return 'kill: usage: kill <pid>';
+        }
+        
+        const process = ptm.get(pid);
+        if (!process) {
+            return `kill: (${pid}) - No such process`;
+        }
+
+        if (process.type === 'system' && !isSudo) {
+            return `kill: (${pid}) - Operation not permitted`;
+        }
+
+        if (ptm.kill(pid)) {
+            return `Process ${pid} terminated.`;
+        } else {
+            return `kill: (${pid}) - Could not terminate process. It may not exist or you may lack permissions.`;
+        }
+    },
+    jobs: () => {
+        const processes = ptm.list().filter(p => 
+            p.type === 'user' && 
+            p.status !== 'terminated' && 
+            p.command // Filter for processes that are actual commands
+        );
+
+        if (processes.length === 0) {
+            return '';
+        }
+        let output = 'JID\tPID\tSTATUS\t\tCOMMAND\n';
+        processes.forEach((p, index) => {
+            output += `[${index + 1}]\t${p.pid}\t${p.status.padEnd(10, ' ')}\t${p.command}\n`;
+        });
+        return output;
+    },
+    bg: (args) => {
+        const jidStr = args[0]?.replace('%', '');
+        if (!jidStr) return 'bg: usage: bg %<job_id>';
+        
+        const jobs = ptm.list().filter(p => p.command);
+        const jobIndex = parseInt(jidStr, 10) - 1;
+
+        if (jobIndex >= 0 && jobIndex < jobs.length) {
+            const process = jobs[jobIndex];
+            if (process.status === 'sleeping') {
+                ptm.resume(process.pid);
+                shellPrint(`[${jobIndex + 1}] ${process.command} &`);
+                return '';
+            } else {
+                return `bg: job ${jobIndex + 1} is not stopped.`;
+            }
+        }
+        return `bg: job not found: %${jidStr}`;
+    },
+    fg: async (args) => {
+        const jidStr = args[0]?.replace('%', '');
+        if (!jidStr) {
+            shellPrint('fg: usage: fg %<job_id>');
+            return;
+        }
+        
+        const jobs = ptm.list().filter(p => p.command);
+        const jobIndex = parseInt(jidStr, 10) - 1;
+
+        if (jobIndex >= 0 && jobIndex < jobs.length) {
+            const process = jobs[jobIndex];
+            shellPrint(process.command || '');
+            ptm.resume(process.pid);
+            
+            // This is a major simplification. In a real shell, we'd need a way
+            // to block the shell input until the foreground process is done.
+            // For now, we just bring it to "running" state and the user can interact again.
+            // A true implementation would require significant re-architecture.
+            shellPrint(`(Process ${process.pid} is now in the foreground, but shell remains interactive in this simulation)`);
+            return;
+        }
+        shellPrint(`fg: job not found: %${jidStr}`);
     },
     cd: (args) => {
         const targetPath = args[0] || '/home/user';
@@ -238,18 +365,41 @@ builtInCommands = {
             shellPrint(`[adt] Error: ${e.message}`);
         }
     },
+    sleep: async (args) => {
+        const seconds = parseInt(args[0], 10);
+        if (isNaN(seconds)) {
+            shellPrint('sleep: invalid time interval');
+            return;
+        }
+        await new Promise(resolve => setTimeout(resolve, seconds * 1000));
+    },
+    spin: async (args) => {
+        const duration = parseInt(args[0] || '5', 10);
+        const end = Date.now() + duration * 1000;
+        shellPrint(`Spinning for ${duration}s... (This is a CPU-intensive task)`);
+        const proc = ptm.list().find(p => p.command?.startsWith('spin'));
+        
+        while (Date.now() < end) {
+            // Heavy computation loop
+            for (let i = 0; i < 1000000; i++) {
+                Math.sqrt(i);
+            }
+            if (proc) proc.cpu = Math.random() * 80 + 10; // Simulate high CPU
+            // Yield to the event loop to keep the browser responsive
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        if (proc) proc.cpu = 0;
+    },
     mim: (args) => mim(args),
-    sudo: async (args) => {
+    sudo: async (args, isSudo, inBackground) => {
         if (args.length === 0) {
             shellPrint('sudo: missing command');
             return;
         }
         const [command, ...commandArgs] = args;
         
-        isSudo = true;
-        // shellPrint('[sudo] Running with elevated privileges...');
-        await executeCommand(command, commandArgs);
-        isSudo = false; // Reset after command execution
+        // isSudo is false here. We are calling the next command with isSudo = true.
+        await executeCommand(command, commandArgs, true, inBackground);
     }
 };
 
@@ -273,21 +423,46 @@ export async function handleShellInput(e: KeyboardEvent) {
         bootScreen.innerHTML += prompt;
         
         // Execute the command
-        const fullCommand = currentLine.trim();
+        let fullCommand = currentLine.trim();
+        let runInBackground = false;
+        if (fullCommand.endsWith('&')) {
+            runInBackground = true;
+            fullCommand = fullCommand.slice(0, -1).trim();
+        }
+
         if (fullCommand) {
             commandHistory.unshift(fullCommand);
-        }
-        historyIndex = -1;
-        const [command, ...args] = fullCommand.split(' ');
-        currentLine = '';
+            historyIndex = -1;
+            const [command, ...args] = fullCommand.split(' ');
+            currentLine = '';
 
-        if (command) {
-            await executeCommand(command, args);
+            if (command) {
+                // If it's not a background command, we await it.
+                // Otherwise, we let it run without blocking the shell.
+                const promise = executeCommand(command, args, false, runInBackground);
+                if (!runInBackground) {
+                    await promise;
+                }
+            }
+        } else {
+            currentLine = '';
         }
 
         // Render the new, empty prompt
         renderShell();
 
+    } else if (e.ctrlKey && e.key.toLowerCase() === 'z') {
+        // Ctrl+Z to suspend the "foreground" process
+        // In our simulation, the "foreground" process is the last one started that is still running.
+        const runningProcs = ptm.list().filter(p => p.status === 'running' && p.type === 'user' && p.command);
+        if (runningProcs.length > 0) {
+            const lastProc = runningProcs[runningProcs.length - 1];
+            if (lastProc.name !== 'sudo') { // Don't suspend sudo itself
+                 ptm.suspend(lastProc.pid);
+                 shellPrint(`\n[+] Stopped   ${lastProc.command}`);
+                 renderShell();
+            }
+        }
     } else {
         // For any other key, just update the input line
         const lastLineIndex = bootScreen.innerHTML.lastIndexOf('\n');

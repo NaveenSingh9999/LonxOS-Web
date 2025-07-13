@@ -1,40 +1,56 @@
 # Lonx OS
 
-**Lonx OS** is a lightweight, browser-based operating system designed to simulate a classic command-line environment entirely in your web browser. It features a modular kernel, a virtual filesystem, process and memory management, and a package manager for installing new applications.
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNaveenSingh9999%2FLonx)
-
-## Features
-
--   **Unix-like Shell:** A familiar command-line interface with commands like `ls`, `cd`, `cat`, `rm`, `echo`, `pwd`, and more.
--   **Virtual Filesystem:** A persistent, in-browser filesystem that stores your files and directories in `localStorage`.
--   **Package Manager (`mim`):** The Lonx Module and Installation Manager (`mim`) allows you to install new commands and applications from external repositories.
--   **Networking Tools:** Includes `wget` for downloading files and `adt` for network diagnostics, all powered by a resilient, multi-proxy CORS fetching system.
--   **Text Editor (`nano`):** A full-screen text editor for creating and editing files directly within the OS.
--   **Sudo:** A `sudo` command to perform actions with elevated (simulated) privileges.
--   **Process Management:** Basic process management with `ps` to view running processes.
-
-## Live Demo
-
-You can try Lonx OS live at: **[https://lonx.vercel.app/boot/tylon.html](https://lonx.vercel.app/boot/tylon.html)**
-
-## Getting Started
-
-Simply open the [live demo link](https://lonx.vercel.app/boot/tylon.html) to start using Lonx OS. Here are a few commands to try:
-
--   `help`: See a list of available commands.
--   `ls`: List files in the current directory.
--   `mim list`: See a list of installed packages.
--   `mim install hello`: Install a sample "hello world" program.
--   `hello`: Run the newly installed program.
--   `man mim`: Read the manual for the `mim` command.
-
-## Development
-
-Interested in building your own applications for Lonx OS? The development process is simple and requires only basic JavaScript knowledge.
-
-For a complete guide on creating, packaging, and distributing your own Lonx OS applications, please see the **[Application Development Guide](./DOCUMENTATION.md)**.
+Lonx is a web-based, simulated operating system designed to mimic the core functionalities of a traditional OS within a browser environment. It features a process and thread manager, a memory controller, a virtual filesystem, and a fully interactive shell.
 
 ---
 
-*Lonx OS is a project for demonstration and educational purposes.*
+## ✨ Core Features
+
+- **Multitasking Kernel**: A sophisticated kernel that manages processes, threads, and system resources.
+- **Process & Job Control**: Create, kill, suspend, and manage foreground/background jobs.
+- **Memory Management**: A memory controller that allocates and frees memory, preventing processes from running if RAM is insufficient.
+- **Virtual Filesystem**: A complete in-memory filesystem with support for directories, files, and permissions.
+- **Interactive Shell**: A powerful shell with command history, job control (`&`, `Ctrl+Z`), and familiar commands (`ps`, `ls`, `kill`, `cat`, `sudo`).
+- **System Utilities**: Includes commands like `spin` (CPU-intensive task), `sleep`, `memstat`, and more for testing and monitoring.
+- **Extensible**: New commands can be easily added to the `/bin` directory.
+
+---
+
+## 📚 Documentation
+
+For a detailed explanation of the kernel's internal workings, please see:
+
+- **[Processes & Kernel Job Handling](./docs/processes_and_kernel_job_handling.md)**
+
+---
+
+## 🚀 Getting Started
+
+1.  Open `boot/tylon.html` in a modern web browser.
+2.  The system will boot up and present you with the Lonx shell.
+3.  Try out some commands!
+
+### Example Commands
+
+- **See what's running:**
+  ```sh
+  ps
+  ```
+- **Run a CPU-intensive task in the background:**
+  ```sh
+  spin 15 &
+  ```
+- **Check memory usage:**
+  ```sh
+  memstat
+  ```
+- **Suspend and resume a job:**
+  ```sh
+  sleep 60   # Press Ctrl+Z after a moment
+  jobs       # See the stopped job
+  bg %1      # Resume it in the background
+  ```
+
+---
+
+This project is a simulation and is for educational purposes.

@@ -1,11 +1,11 @@
 // os/kernel.ts
 import { initShell, shellPrint, updateShellPrompt } from './shell.js';
-import { executeCommand } from './process.js';
 import { configExists, getConfig, createDefaultConfig, updateConfig } from './core/config.js';
 import { runOnboardingWizard } from './boot/onboarding.js';
-import { initMemory, getMemoryStats } from './memory.js';
+import { memoryController } from './memory.js';
 import { initFS } from './fs.js';
 import { initHardware, getHardwareInfo } from './core/hardware.js';
+import { ptm } from './core/ptm.js';
 
 let kernelState = 'HALTED';
 
@@ -39,8 +39,9 @@ export async function boot() {
 
     // Initialize core systems
     initHardware();
-    initMemory(getHardwareInfo().ram.total);
+    memoryController.init(getHardwareInfo().ram.total);
     initFS();
+    ptm.create('kernel', 15, 'system', 0); // Kernel process itself
 
     // Store hardware info in config if it wasn't there
     if (!config.hardware) {
@@ -52,7 +53,7 @@ export async function boot() {
     updateShellPrompt(config.identity.username, config.identity.hostname);
     
     shellPrint('Welcome to Lonx OS!');
-    shellPrint(`Hardware: ${getHardwareInfo().cpu.cores} Cores @ ${getHardwareInfo().cpu.speed.toFixed(2)}GHz, ${getMemoryStats().total}MB RAM`);
+    shellPrint(`Hardware: ${getHardwareInfo().cpu.cores} Cores @ ${getHardwareInfo().cpu.speed.toFixed(2)}GHz, ${memoryController.getTotal()}MB RAM`);
     shellPrint('Type "help" for a list of commands.');
 
     kernelState = 'RUNNING';
