@@ -62,10 +62,6 @@
 <body>
     <pre id="boot-screen"></pre>
     <textarea id="nano-editor" spellcheck="false"></textarea>
-    <script type="module">
-        import { bootKernel } from '../os/kernel.js';
-        const bootScreen = document.getElementById('boot-screen');
-        bootKernel(bootScreen);
-    </script>
+    <script type="module" src="./tylon.js"></script>
 </body>
 </html>
