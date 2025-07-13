@@ -53,6 +53,48 @@ async function thread_test(args: string[], isSudo: boolean, inBackground?: boole
     });
 }
 
+async function runCommand(args: string[], isSudo: boolean, inBackground?: boolean, process?: Process | null): Promise<string | void> {
+    if (!process) {
+        return "run: command must be run within a process.";
+    }
+    if (args.length === 0) {
+        process.stderr.push("run: missing file operand");
+        return;
+    }
+
+    const filePath = args[0];
+    if (!filePath.endsWith('.rn')) {
+        process.stderr.push(`run: cannot execute '${filePath}', not a .rn file.`);
+        return;
+    }
+
+    const resolvedPath = resolvePath(filePath);
+    const scriptContent = read(resolvedPath);
+
+    if (typeof scriptContent !== 'string' || scriptContent.length === 0) {
+        process.stderr.push(`run: cannot access '${resolvedPath}': No such file or directory`);
+        return;
+    }
+
+    try {
+        const blob = new Blob([scriptContent], { type: "text/javascript" });
+        const url = URL.createObjectURL(blob);
+        try {
+            const module = await import(url);
+            if (typeof module.default === 'function') {
+                const moduleArgs = args.slice(1);
+                await module.default(moduleArgs, lonx_api, isSudo, process);
+            } else {
+                process.stderr.push(`Invalid executable format for ${filePath}: no default export function.`);
+            }
+        } finally {
+            URL.revokeObjectURL(url);
+        }
+    } catch (e: any) {
+        process.stderr.push(`Error executing ${filePath}: ${e.message}`);
+    }
+}
+
 
 let bootScreen: HTMLElement;
 let currentLine = '';
@@ -394,6 +436,7 @@ builtInCommands = {
         const success = remove(resolved);
         return success ? '' : `rm: cannot remove '${resolved}'`;
     },
+    run: runCommand,
     thread_test,
     ps: (args) => {
         const processes = ptm.list();
