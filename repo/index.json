@@ -24,6 +24,14 @@
     "lastUpdated": "2025-07-13T00:00:00Z"
   },
   {
+    "name": "speedtest",
+    "desc": "Real internet speed test with download/upload/ping",
+    "version": "1.0.0",
+    "url": "packages/speedtest.js",
+    "checksum": "sha256:speedtest-v1.0.0",
+    "lastUpdated": "2025-07-13T00:00:00Z"
+  },
+  {
     "name": "man",
     "desc": "Manual page viewer for commands",
     "version": "1.1.0",
