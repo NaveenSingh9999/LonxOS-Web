@@ -134,3 +134,82 @@ Now, your application is ready to be installed and run in Lonx OS.
 ## Conclusion
 
 You have successfully created, packaged, and run a custom application in Lonx OS. By following this structure, you can build more complex applications that leverage the filesystem, networking, and shell interaction capabilities provided by the `lonx_api`.
+
+## 5. Creating a Third-Party Package Repository
+
+While you can add packages to the default repository, Lonx OS also supports adding third-party repositories. This allows anyone to host and distribute their own collection of applications. The `mim` package manager can pull from multiple repository sources.
+
+### Step 1: Structure Your Repository
+
+A repository is simply a directory hosted somewhere on the web that contains two key things:
+
+1.  An `index.json` file.
+2.  A folder (e.g., `packages/`) containing your application files.
+
+Your repository structure should look like this:
+
+```
+my-lonx-repo/
+├── index.json
+└── packages/
+    ├── myapp1.js
+    └── myapp2.js
+```
+
+### Step 2: Create the `index.json` File
+
+The `index.json` file is the heart of your repository. It lists all the available packages. The format is the same as the default repository's index.
+
+**Example `index.json`:**
+
+```json
+[
+  {
+    "name": "cowsay",
+    "desc": "A talking cow in your shell",
+    "version": "1.0.0",
+    "url": "packages/cowsay.js"
+  },
+  {
+    "name": "sysinfo",
+    "desc": "Displays system information",
+    "version": "1.1.0",
+    "url": "packages/sysinfo.js"
+  }
+]
+```
+
+**Important:** The `url` for each package must be relative to the `index.json` file.
+
+### Step 3: Host Your Repository
+
+You can host your repository on any platform that serves static files. A free and easy option is **GitHub Pages**.
+
+1.  Create a new public GitHub repository.
+2.  Push your repository files (`index.json` and the `packages/` directory) to it.
+3.  Go to your repository's **Settings** -> **Pages**.
+4.  Choose the branch to deploy from (usually `main`) and click **Save**.
+5.  GitHub will provide you with a URL, like `https://your-username.github.io/your-repo-name/`.
+
+Your `index.json` will be accessible at `https://your-username.github.io/your-repo-name/index.json`.
+
+### Step 4: Add Your Repository to Lonx OS
+
+Once your repository is live, you can add it to Lonx OS using the `mim` command.
+
+1.  Boot Lonx OS.
+2.  Use the `mim addrepo` command, followed by the **full URL** to your `index.json` file.
+
+    ```bash
+    mim addrepo https://your-username.github.io/your-repo-name/index.json
+    ```
+
+    `mim` will save this new repository URL to `/etc/mim/sources.list`.
+
+### How it Works
+
+-   When you run `mim install <package>`, `mim` fetches the `index.json` from the **default system repository** and all **third-party repositories** you've added.
+-   It searches all indexes for the requested package.
+-   It downloads the package from the first repository where it's found.
+
+This system allows for a decentralized and expandable application ecosystem for Lonx OS.
