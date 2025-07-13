@@ -2,8 +2,57 @@
 import { read, write, remove } from './fs.js';
 import { mim } from './mim.js';
 import * as net from './core/net.js';
-import { ptm } from './core/ptm.js';
+import { ptm, Process } from './core/ptm.js';
 import { memoryController } from './memory.js';
+
+// --- Threading Test Command ---
+async function thread_test(args: string[], isSudo: boolean, inBackground?: boolean, process?: Process | null): Promise<string> {
+    if (!process) {
+        return "thread_test: command must be run within a process.";
+    }
+
+    return new Promise((resolve, reject) => {
+        let worker: Worker | null = null;
+        const pid = process.pid;
+
+        const onMessage = (data: any) => {
+            if (data.status === 'completed') {
+                resolve(`Thread finished with result: ${data.result}`);
+                if (worker) ptm.terminateThread(pid, worker);
+            } else {
+                process.stdout.push(`Thread message: ${JSON.stringify(data)}`);
+            }
+        };
+
+        const onError = (error: any) => {
+            reject(`Thread error: ${error.message}`);
+            if (worker) ptm.terminateThread(pid, worker);
+        };
+
+        const threadId = ptm.spawnThread(pid, onMessage, onError);
+        
+        if (threadId === -1) {
+            return reject("Failed to spawn thread.");
+        }
+
+        // The worker is stored in the process's threads array. Let's get it.
+        const spawnedProcess = ptm.get(pid);
+        if (!spawnedProcess) return reject("Process disappeared after thread spawn.");
+        
+        worker = spawnedProcess.threads[threadId];
+
+        if (!worker) {
+            return reject("Could not retrieve worker instance after spawning.");
+        }
+
+        // Send a command to the worker
+        const payload = args.join(' ') || 'default payload';
+        ptm.postMessageToThread(pid, threadId, { command: 'exec', payload });
+
+        // The promise will be resolved/rejected by the onMessage/onError handlers.
+    });
+}
+
 
 let bootScreen: HTMLElement;
 let currentLine = '';
@@ -17,6 +66,14 @@ let shellConfig = {
     hostname: 'lonx'
 };
 
+// --- Stream and Piping Types ---
+type Stream = string[];
+interface ProcessStreams {
+    stdin: Stream;
+    stdout: Stream;
+    stderr: Stream;
+}
+
 export function updateShellPrompt(username: string, hostname: string) {
     shellConfig.username = username;
     shellConfig.hostname = hostname;
@@ -26,6 +83,13 @@ export function updateShellPrompt(username: string, hostname: string) {
 export function shellPrint(text: string) {
     if (bootScreen) {
         bootScreen.innerHTML += `\n${text}`;
+        bootScreen.scrollTop = bootScreen.scrollHeight;
+    }
+}
+
+export function shellPrintDirect(text: string) {
+    if (bootScreen) {
+        bootScreen.innerHTML += text;
         bootScreen.scrollTop = bootScreen.scrollHeight;
     }
 }
@@ -73,7 +137,7 @@ function resolvePath(path: string): string {
 let isSudo = false; // Global flag for sudo access
 
 // Forward declaration of builtInCommands
-let builtInCommands: { [key: string]: (args: string[], isSudo: boolean, inBackground?: boolean) => string | Promise<void> };
+let builtInCommands: { [key: string]: (args: string[], isSudo: boolean, inBackground?: boolean, process?: Process | null) => string | void | Promise<string | void> };
 
 const lonx_api = {
     shell: {
@@ -90,6 +154,15 @@ const lonx_api = {
     net: {
         tryFetch: net.tryFetch,
         ping: net.ping,
+    },
+    ptm: {
+        get: ptm.get.bind(ptm),
+        list: ptm.list.bind(ptm),
+        postMessage: ptm.postMessage.bind(ptm),
+        onMessage: ptm.onMessage.bind(ptm),
+        spawnThread: ptm.spawnThread.bind(ptm),
+        terminateThread: ptm.terminateThread.bind(ptm),
+        postMessageToThread: ptm.postMessageToThread.bind(ptm),
     }
 };
 
@@ -105,66 +178,138 @@ function renderShell() {
     bootScreen.scrollTop = bootScreen.scrollHeight;
 }
 
-export async function executeCommand(command: string, args: string[], isSudo = false, inBackground = false) {
+async function executeSingleCommand(command: string, args: string[], isSudo = false, streams: ProcessStreams): Promise<number> {
     const fullCommand = `${command} ${args.join(' ')}`;
-    // Default memory for a command process. Could be adjusted based on the command.
-    const requiredMemory = 16; 
+    const requiredMemory = 16;
 
     const process = ptm.create(command, requiredMemory, "user", 1, fullCommand);
 
     if (!process) {
-        shellPrint(`-lonx: ${command}: Not enough memory to execute command.`);
-        return;
+        streams.stderr.push(`-lonx: ${command}: Not enough memory to execute command.`);
+        return 1; // Error code
     }
+
+    // Connect process streams
+    process.stdin = streams.stdin;
+    process.stdout = streams.stdout;
+    process.stderr = streams.stderr;
 
     try {
         if (command in builtInCommands) {
-            // The 'sudo' command is special; it elevates privileges for the *next* command.
             if (command === 'sudo') {
-                await builtInCommands[command](args, false, inBackground); // isSudo is false, pass inBackground
-                // The sudo command process is finished after it executes the child command.
-                if (ptm.get(process.pid)) ptm.kill(process.pid);
-                return;
+                // Sudo is handled at the pipeline level
+                return 0;
             }
-            const result = await builtInCommands[command](args, isSudo, inBackground);
+            const result = await builtInCommands[command](args, isSudo, false, process);
             if (result) {
-                shellPrint(result);
+                process.stdout.push(result);
             }
         } else if (command) {
-            // Try to execute from /bin
             const binPath = `/bin/${command}`;
             const scriptContent = read(binPath);
             if (typeof scriptContent === 'string' && scriptContent.length > 0) {
                 try {
-                    const executable = new Function('args', 'lonx_api', 'isSudo', scriptContent);
-                    await executable(args, lonx_api, isSudo);
+                    // Modify the function to accept the process object
+                    const executable = new Function('args', 'lonx_api', 'isSudo', 'process', scriptContent);
+                    await executable(args, lonx_api, isSudo, process);
                 } catch (e: any) {
-                    if (e.message.includes("export")) {
-                         shellPrint(`Error executing ${command}: This module may be in an old format. Try updating it with 'mim install ${command}'.`);
-                    } else {
-                        shellPrint(`Error executing ${command}: ${e.message}`);
-                    }
+                    process.stderr.push(`Error executing ${command}: ${e.message}`);
                 }
             } else {
-                shellPrint(`Command not found: ${command}`);
+                process.stderr.push(`Command not found: ${command}`);
             }
         }
+        return 0; // Success
     } catch (e: any) {
-        shellPrint(`Error: ${e.message}`);
+        process.stderr.push(`Error: ${e.message}`);
+        return 1; // Error
     } finally {
-        // Clean up the process unless it was started in the background
         if (ptm.get(process.pid)) {
-            if (inBackground) {
-                shellPrint(`[1] ${process.pid}`); // Basic job notification
-            } else {
-                ptm.kill(process.pid);
-            }
+            ptm.kill(process.pid);
         }
     }
 }
 
+export async function executeCommand(fullCommand: string, inBackground = false) {
+    const pipeline = parseCommand(fullCommand);
+    let previousStdout: Stream = [];
+
+    for (let i = 0; i < pipeline.length; i++) {
+        const cmd = pipeline[i];
+        if (!cmd.command) continue; // Skip empty commands
+        const isLastCommand = i === pipeline.length - 1;
+
+        const streams: ProcessStreams = {
+            stdin: previousStdout,
+            stdout: [],
+            stderr: [],
+        };
+
+        // Handle redirection
+        if (isLastCommand && cmd.redirect) {
+            const resolvedPath = resolvePath(cmd.redirect.file);
+            await executeSingleCommand(cmd.command, cmd.args, cmd.isSudo, streams);
+            
+            const output = streams.stdout.join('\n');
+            if (!write(resolvedPath, output)) {
+                shellPrint(`-lonx: cannot write to ${resolvedPath}`);
+            }
+        } else {
+            await executeSingleCommand(cmd.command, cmd.args, cmd.isSudo, streams);
+        }
+
+        // If not the last command, pipe stdout to next stdin
+        previousStdout = streams.stdout;
+
+        // Print stderr to the main shell
+        if (streams.stderr.length > 0) {
+            shellPrint(streams.stderr.join('\n'));
+        }
+        
+        // If it's the last command, print its stdout
+        if (isLastCommand && !cmd.redirect) {
+            shellPrint(streams.stdout.join('\n'));
+        }
+    }
+}
+
+// A more robust command parser
+function parseCommand(input: string): { command: string; args: string[]; isSudo: boolean; redirect?: { type: string; file: string } }[] {
+    const commands = input.split('|').map(s => s.trim());
+    const pipeline: { command: string; args: string[]; isSudo: boolean; redirect?: { type: string; file: string } }[] = [];
+
+    for (const cmdStr of commands) {
+        let isSudo = false;
+        const matchedParts = cmdStr.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+        // Convert RegExpMatchArray to a standard string array and remove quotes
+        const commandParts = Array.from(matchedParts).map(part => part.replace(/^['"]|['"]$/g, ""));
+
+        if (commandParts[0] === 'sudo') {
+            isSudo = true;
+            commandParts.shift();
+        }
+
+        const command = commandParts[0];
+        const args = commandParts.slice(1);
+        
+        const redirectIndex = args.findIndex(arg => arg === '>');
+        let redirect;
+        if (redirectIndex !== -1) {
+            redirect = { type: '>', file: args[redirectIndex + 1] };
+            args.splice(redirectIndex, 2); // Remove redirection from args
+        }
+
+        if (command) {
+            pipeline.push({ command, args, isSudo, redirect });
+        }
+    }
+
+    return pipeline;
+}
+
+
 builtInCommands = {
-    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, kill, jobs, bg, fg, sleep, spin, cd, pwd, adt, sudo',
+    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, kill, jobs, bg, fg, sleep, spin, cd, pwd, adt, sudo, thread_test',
     echo: (args) => args.join(' '),
     memstat: () => {
         const stats = memoryController;
@@ -200,8 +345,11 @@ builtInCommands = {
         }
         return `ls: cannot access '${path}': Not a directory or does not exist`;
     },
-    cat: (args) => {
+    cat: (args: string[], isSudo: boolean, inBackground?: boolean, process?: Process | null) => {
         const path = args[0];
+        if (!path && process && process.stdin.length > 0) {
+            return process.stdin.join('\n');
+        }
         if (!path) return 'cat: missing operand';
         const resolved = resolvePath(path);
         const content = read(resolved);
@@ -232,6 +380,7 @@ builtInCommands = {
         const success = remove(resolved);
         return success ? '' : `rm: cannot remove '${resolved}'`;
     },
+    thread_test,
     ps: (args) => {
         const processes = ptm.list();
         let output = 'PID\tPPID\tSTATUS\t\tMEM\tCPU\tTIME\tCOMMAND\n';
@@ -390,16 +539,9 @@ builtInCommands = {
         }
         if (proc) proc.cpu = 0;
     },
-    mim: (args) => mim(args),
+    mim: (args: string[], isSudo: boolean, inBackground?: boolean, process?: Process | null) => mim(args),
     sudo: async (args, isSudo, inBackground) => {
-        if (args.length === 0) {
-            shellPrint('sudo: missing command');
-            return;
-        }
-        const [command, ...commandArgs] = args;
-        
-        // isSudo is false here. We are calling the next command with isSudo = true.
-        await executeCommand(command, commandArgs, true, inBackground);
+        // This is now handled by the parser
     }
 };
 
@@ -420,7 +562,7 @@ export async function handleShellInput(e: KeyboardEvent) {
         }
         const promptPath = currentWorkingDirectory.replace('/home/user', '~');
         const prompt = `\n<span style="color: #50fa7b;">${shellConfig.username}@${shellConfig.hostname}</span>:<span style="color: #87CEFA;">${promptPath}</span>$ ${currentLine}`;
-        bootScreen.innerHTML += prompt;
+        shellPrintDirect(prompt);
         
         // Execute the command
         let fullCommand = currentLine.trim();
@@ -433,16 +575,11 @@ export async function handleShellInput(e: KeyboardEvent) {
         if (fullCommand) {
             commandHistory.unshift(fullCommand);
             historyIndex = -1;
-            const [command, ...args] = fullCommand.split(' ');
             currentLine = '';
 
-            if (command) {
-                // If it's not a background command, we await it.
-                // Otherwise, we let it run without blocking the shell.
-                const promise = executeCommand(command, args, false, runInBackground);
-                if (!runInBackground) {
-                    await promise;
-                }
+            const promise = executeCommand(fullCommand, runInBackground);
+            if (!runInBackground) {
+                await promise;
             }
         } else {
             currentLine = '';
