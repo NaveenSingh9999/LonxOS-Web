@@ -205,13 +205,24 @@ async function executeSingleCommand(command: string, args: string[], isSudo = fa
                 process.stdout.push(result);
             }
         } else if (command) {
-            const binPath = `/bin/${command}`;
+            const binPath = `/bin/${command}.js`; // Look for .js files
             const scriptContent = read(binPath);
             if (typeof scriptContent === 'string' && scriptContent.length > 0) {
                 try {
-                    // Modify the function to accept the process object
-                    const executable = new Function('args', 'lonx_api', 'isSudo', 'process', scriptContent);
-                    await executable(args, lonx_api, isSudo, process);
+                    // Use dynamic import for module-based executables
+                    const blob = new Blob([scriptContent], { type: "text/javascript" });
+                    const url = URL.createObjectURL(blob);
+                    try {
+                        const module = await import(url);
+                        if (typeof module.default === 'function') {
+                            // Pass the process object as the fourth argument to main
+                            await module.default(args, lonx_api, isSudo, process);
+                        } else {
+                            process.stderr.push(`Invalid executable format for ${command}: no default export function.`);
+                        }
+                    } finally {
+                        URL.revokeObjectURL(url);
+                    }
                 } catch (e: any) {
                     process.stderr.push(`Error executing ${command}: ${e.message}`);
                 }
