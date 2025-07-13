@@ -19,29 +19,28 @@ class SpeedTest {
         this.isRunning = false;
         this.abortController = null;
         
-        // Test servers with different file sizes
+        // Test servers that work well with CORS proxies
         this.testServers = [
             {
-                name: 'CloudFlare',
-                downloadUrl: 'https://speed.cloudflare.com/__down?bytes=',
-                uploadUrl: 'https://speed.cloudflare.com/__up',
-                pingUrl: 'https://speed.cloudflare.com/cdn-cgi/trace'
+                name: 'HTTPBin',
+                downloadUrl: 'https://httpbin.org/bytes/',
+                uploadUrl: 'https://httpbin.org/post',
+                pingUrl: 'https://httpbin.org/status/200'
             },
             {
-                name: 'Fast.com (Netflix)',
-                downloadUrl: 'https://api.fast.com/netflix/speedtest/v2/download',
-                pingUrl: 'https://api.fast.com/netflix/speedtest/v2/ping'
+                name: 'JSONPlaceholder',
+                downloadUrl: 'https://jsonplaceholder.typicode.com/photos',
+                pingUrl: 'https://jsonplaceholder.typicode.com/posts/1'
             },
             {
-                name: 'Google',
-                downloadUrl: 'https://storage.googleapis.com/gcp-public-data-landsat/speedtest/speedtest-',
-                pingUrl: 'https://www.google.com/generate_204'
+                name: 'GitHub API',
+                downloadUrl: 'https://api.github.com/repos/microsoft/vscode/releases',
+                pingUrl: 'https://api.github.com/zen'
             },
             {
-                name: 'LibreSpeed',
-                downloadUrl: 'https://librespeed.org/backend/garbage.php?ckSize=',
-                uploadUrl: 'https://librespeed.org/backend/empty.php',
-                pingUrl: 'https://librespeed.org/backend/empty.php'
+                name: 'Random Data',
+                downloadUrl: 'https://random-data-api.com/api/v2/users?size=1000',
+                pingUrl: 'https://random-data-api.com/api/v2/users?size=1'
             }
         ];
         
@@ -119,47 +118,34 @@ class SpeedTest {
         const server = this.testServers[serverIndex];
         const measurements = [];
         
-        for (let i = 0; i < 5; i++) {
-            const startTime = performance.now();
-            
+        this.lonx.shell.print(`   Testing ping to ${server.name}...`);
+        
+        for (let i = 0; i < 3; i++) {
             try {
-                await fetch(server.pingUrl, {
-                    method: 'HEAD',
-                    mode: 'no-cors',
-                    signal: this.abortController.signal,
-                    cache: 'no-cache'
-                });
+                // Use Lonx OS network module for ping
+                const latency = await this.lonx.net.ping(server.pingUrl);
                 
-                const endTime = performance.now();
-                measurements.push(endTime - startTime);
+                if (latency > 0) {
+                    measurements.push(latency);
+                    this.lonx.shell.print(`   Ping ${i + 1}/3: ${latency}ms`);
+                } else {
+                    this.lonx.shell.print(`   Ping ${i + 1}/3: Failed`);
+                }
                 
             } catch (error) {
-                if (error.name !== 'AbortError') {
-                    // Fallback ping method
-                    const img = new Image();
-                    const startTime = performance.now();
-                    
-                    await new Promise((resolve, reject) => {
-                        img.onload = img.onerror = () => {
-                            const endTime = performance.now();
-                            measurements.push(endTime - startTime);
-                            resolve();
-                        };
-                        
-                        setTimeout(() => reject(new Error('Ping timeout')), 5000);
-                        img.src = server.pingUrl + '?t=' + Date.now();
-                    });
-                }
+                this.lonx.shell.print(`   Ping ${i + 1}/3: Error - ${error.message}`);
             }
             
             // Small delay between pings
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 500));
         }
         
-        // Return average ping, excluding outliers
-        measurements.sort((a, b) => a - b);
-        const middle = measurements.slice(1, -1);
-        return middle.reduce((sum, val) => sum + val, 0) / middle.length;
+        if (measurements.length === 0) {
+            throw new Error('All ping attempts failed');
+        }
+        
+        // Return average ping
+        return measurements.reduce((sum, val) => sum + val, 0) / measurements.length;
     }
 
     async testDownloadSpeed(serverIndex = 0, duration = 10) {
@@ -168,31 +154,34 @@ class SpeedTest {
         const startTime = performance.now();
         const endTime = startTime + (duration * 1000);
         
-        // Start with medium size and adjust based on speed
-        let currentSize = this.testSizes.medium;
+        this.lonx.shell.print(`   Testing download from ${server.name}...`);
         
-        while (performance.now() < endTime && !this.abortController.signal.aborted) {
+        let iteration = 0;
+        
+        while (performance.now() < endTime && !this.abortController.signal.aborted && iteration < 5) {
             try {
                 const testStartTime = performance.now();
+                iteration++;
                 
-                // Construct download URL
+                // Construct download URL with cache buster
                 let downloadUrl;
-                if (server.name === 'CloudFlare') {
-                    downloadUrl = server.downloadUrl + currentSize;
-                } else if (server.name === 'LibreSpeed') {
-                    downloadUrl = server.downloadUrl + currentSize;
-                } else if (server.name === 'Google') {
-                    downloadUrl = server.downloadUrl + Math.floor(currentSize / (1024 * 1024)) + 'MB.bin';
+                if (server.name === 'HTTPBin') {
+                    // Request different sized random data
+                    const size = Math.min(1000000 + (iteration * 500000), 5000000); // 1MB to 5MB
+                    downloadUrl = server.downloadUrl + size;
                 } else {
-                    downloadUrl = server.downloadUrl;
+                    // Add cache buster for other APIs
+                    downloadUrl = server.downloadUrl + '?t=' + Date.now() + '&iter=' + iteration;
                 }
                 
-                const response = await fetch(downloadUrl, {
-                    signal: this.abortController.signal,
-                    cache: 'no-cache'
-                });
+                this.lonx.shell.print(`   Download attempt ${iteration}/5: ${downloadUrl.substring(0, 50)}...`);
                 
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                // Use Lonx OS network module
+                const response = await this.lonx.net.tryFetch(downloadUrl);
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
                 
                 // Read response in chunks to measure progress
                 const reader = response.body.getReader();
@@ -208,23 +197,30 @@ class SpeedTest {
                     // Update progress
                     const elapsed = (performance.now() - startTime) / 1000;
                     const currentSpeed = totalBytes / elapsed;
-                    this.updateProgress('Download', currentSpeed, elapsed, duration);
                     
                     if (performance.now() >= endTime) break;
                 }
                 
-                // Adjust size for next iteration based on download time
                 const testDuration = (performance.now() - testStartTime) / 1000;
-                if (testDuration < 2) {
-                    currentSize = Math.min(currentSize * 2, this.testSizes.xlarge);
-                } else if (testDuration > 5) {
-                    currentSize = Math.max(currentSize / 2, this.testSizes.small);
-                }
+                const testSpeed = chunkBytes / testDuration;
+                this.lonx.shell.print(`   Downloaded ${this.formatBytes(chunkBytes)} in ${testDuration.toFixed(1)}s (${this.formatSpeed(testSpeed)})`);
+                
+                // Short delay between iterations
+                await new Promise(resolve => setTimeout(resolve, 200));
                 
             } catch (error) {
                 if (error.name === 'AbortError') break;
-                throw error;
+                this.lonx.shell.print(`   Download attempt ${iteration} failed: ${error.message}`);
+                
+                // Try to continue with other iterations
+                if (totalBytes === 0 && iteration >= 3) {
+                    throw new Error(`Failed to download after ${iteration} attempts: ${error.message}`);
+                }
             }
+        }
+        
+        if (totalBytes === 0) {
+            throw new Error('No data downloaded successfully');
         }
         
         const totalDuration = (performance.now() - startTime) / 1000;
@@ -235,51 +231,75 @@ class SpeedTest {
         const server = this.testServers[serverIndex];
         
         if (!server.uploadUrl) {
-            throw new Error('Upload test not supported for this server');
+            this.lonx.shell.print(`   Upload test not supported for ${server.name}`);
+            return 0;
         }
         
         let totalBytes = 0;
         const startTime = performance.now();
         const endTime = startTime + (duration * 1000);
         
-        // Generate test data
-        let testDataSize = this.testSizes.small;
+        this.lonx.shell.print(`   Testing upload to ${server.name}...`);
         
-        while (performance.now() < endTime && !this.abortController.signal.aborted) {
+        let iteration = 0;
+        let testDataSize = 50000; // Start with 50KB
+        
+        while (performance.now() < endTime && !this.abortController.signal.aborted && iteration < 3) {
             try {
                 const testData = this.generateTestData(testDataSize);
                 const testStartTime = performance.now();
+                iteration++;
                 
-                const response = await fetch(server.uploadUrl, {
+                this.lonx.shell.print(`   Upload attempt ${iteration}/3: Sending ${this.formatBytes(testDataSize)}...`);
+                
+                // Create form data for upload
+                const formData = new FormData();
+                formData.append('data', new Blob([testData]), 'speedtest.bin');
+                formData.append('size', testDataSize.toString());
+                formData.append('timestamp', Date.now().toString());
+                
+                // Use Lonx OS network module for upload
+                const response = await this.lonx.net.tryFetch(server.uploadUrl, {
                     method: 'POST',
-                    body: testData,
-                    signal: this.abortController.signal,
-                    headers: {
-                        'Content-Type': 'application/octet-stream'
-                    }
+                    body: formData
                 });
                 
-                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Read response to complete the upload
+                await response.text();
                 
                 totalBytes += testDataSize;
                 
-                // Update progress
-                const elapsed = (performance.now() - startTime) / 1000;
-                const currentSpeed = totalBytes / elapsed;
-                this.updateProgress('Upload', currentSpeed, elapsed, duration);
-                
-                // Adjust size for next iteration
                 const testDuration = (performance.now() - testStartTime) / 1000;
-                if (testDuration < 2) {
-                    testDataSize = Math.min(testDataSize * 1.5, this.testSizes.large);
-                } else if (testDuration > 5) {
-                    testDataSize = Math.max(testDataSize / 1.5, this.testSizes.small);
-                }
+                const testSpeed = testDataSize / testDuration;
+                this.lonx.shell.print(`   Uploaded ${this.formatBytes(testDataSize)} in ${testDuration.toFixed(1)}s (${this.formatSpeed(testSpeed)})`);
+                
+                // Increase size for next iteration
+                testDataSize = Math.min(testDataSize * 2, 500000); // Max 500KB
+                
+                // Short delay between iterations
+                await new Promise(resolve => setTimeout(resolve, 200));
                 
             } catch (error) {
                 if (error.name === 'AbortError') break;
-                throw error;
+                this.lonx.shell.print(`   Upload attempt ${iteration} failed: ${error.message}`);
+                
+                // Try to continue with smaller size
+                testDataSize = Math.max(testDataSize / 2, 10000);
+                
+                if (totalBytes === 0 && iteration >= 2) {
+                    this.lonx.shell.print(`   Upload test failed after ${iteration} attempts`);
+                    return 0;
+                }
             }
+        }
+        
+        if (totalBytes === 0) {
+            this.lonx.shell.print(`   No data uploaded successfully`);
+            return 0;
         }
         
         const totalDuration = (performance.now() - startTime) / 1000;
@@ -304,8 +324,8 @@ class SpeedTest {
         const progressBar = this.createProgressBar(progress);
         const speedStr = this.formatSpeed(speed);
         
-        // Clear previous line and show progress
-        process.stdout.write(`\r   ${type}: ${progressBar} ${speedStr} (${elapsed.toFixed(1)}s)`);
+        // Use Lonx shell print instead of process.stdout
+        this.lonx.shell.print(`   ${type}: ${progressBar} ${speedStr} (${elapsed.toFixed(1)}s)`);
     }
 
     createProgressBar(percentage, width = 30) {

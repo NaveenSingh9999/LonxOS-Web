@@ -15,21 +15,27 @@ const PROXIES = [
  * It tries each proxy in order until one succeeds, returning the raw Response object.
  * This acts as the "network driver" for Lonx OS.
  * @param url The URL to fetch.
+ * @param options Fetch options (method, body, headers, etc.)
  * @returns A Promise that resolves to the Response object.
  * @throws An error if all proxies fail.
  */
-export async function tryFetch(url) {
+export async function tryFetch(url, options = {}) {
     if (!url.startsWith('http')) {
         return Promise.reject(new Error('Invalid URL protocol. Only http/https are supported.'));
     }
     console.log(`[Net] Attempting to fetch: ${url}`);
+    
+    // Default options
+    const fetchOptions = {
+        mode: 'cors',
+        cache: 'default',
+        ...options
+    };
+    
     // Try direct fetch first for all URLs since many support CORS now
     console.log(`[Net] Trying direct fetch...`);
     try {
-        const response = await fetch(url, {
-            mode: 'cors',
-            cache: 'default'
-        });
+        const response = await fetch(url, fetchOptions);
         if (response.ok) {
             console.log(`[Net] Direct fetch succeeded`);
             return response;
@@ -45,10 +51,17 @@ export async function tryFetch(url) {
         const proxyUrl = proxyBuilder(url);
         console.log(`[Net] Trying proxy ${i + 1}/${PROXIES.length}: ${proxyUrl}`);
         try {
-            const response = await fetch(proxyUrl, {
-                mode: 'cors',
-                cache: 'default'
-            });
+            // For proxied requests, we may need to adjust options
+            const proxyOptions = { ...fetchOptions };
+            
+            // Some proxies don't handle POST well, so fallback to GET for those
+            if (options.method === 'POST' && i > 2) {
+                console.log(`[Net] Proxy ${i + 1} - Converting POST to GET for compatibility`);
+                proxyOptions.method = 'GET';
+                delete proxyOptions.body;
+            }
+            
+            const response = await fetch(proxyUrl, proxyOptions);
             console.log(`[Net] Proxy ${i + 1} responded with status: ${response.status}`);
             if (response.ok) {
                 console.log(`[Net] Success with proxy ${i + 1}`);
