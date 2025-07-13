@@ -1,8 +1,11 @@
 // os/kernel.ts
 import { initShell, shellPrint, updateShellPrompt } from './shell.js';
 import { executeCommand } from './process.js';
-import { configExists, getConfig, createDefaultConfig } from './core/config.js';
+import { configExists, getConfig, createDefaultConfig, updateConfig } from './core/config.js';
 import { runOnboardingWizard } from './boot/onboarding.js';
+import { initMemory, getMemoryStats } from './memory.js';
+import { initFS } from './fs.js';
+import { initHardware, getHardwareInfo } from './core/hardware.js';
 
 let kernelState = 'HALTED';
 
@@ -27,10 +30,21 @@ export async function boot() {
         // A real implementation would likely reboot here. For simplicity, we continue.
     }
     
-    const config = getConfig();
+    let config = getConfig();
     // Ensure config exists, create default if something went wrong after onboarding
     if (!config) {
         createDefaultConfig();
+        config = getConfig();
+    }
+
+    // Initialize core systems
+    initHardware();
+    initMemory(getHardwareInfo().ram.total);
+    initFS();
+
+    // Store hardware info in config if it wasn't there
+    if (!config.hardware) {
+        updateConfig('hardware', getHardwareInfo());
     }
     
     // Initialize the shell and other systems
@@ -38,6 +52,7 @@ export async function boot() {
     updateShellPrompt(config.identity.username, config.identity.hostname);
     
     shellPrint('Welcome to Lonx OS!');
+    shellPrint(`Hardware: ${getHardwareInfo().cpu.cores} Cores @ ${getHardwareInfo().cpu.speed.toFixed(2)}GHz, ${getMemoryStats().total}MB RAM`);
     shellPrint('Type "help" for a list of commands.');
 
     kernelState = 'RUNNING';

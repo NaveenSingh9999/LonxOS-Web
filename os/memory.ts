@@ -9,8 +9,8 @@ interface MemoryStats {
 let totalMemory: number;
 let usedMemory: number;
 
-export function initMemory() {
-    totalMemory = 4096 + Math.floor(Math.random() * 8) * 2048;
+export function initMemory(ramSize: number) {
+    totalMemory = ramSize;
     usedMemory = 10 + Math.random() * 15; // Initial kernel memory usage
     console.log(`[Memory] Initialized with ${totalMemory}MB total.`);
 }
