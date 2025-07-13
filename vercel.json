@@ -1,19 +1,19 @@
 {
   "headers": [
     {
-      "source": "/os/(.*).js",
+      "source": "/boot/os/(.*)\\.js",
       "headers": [
         { "key": "Content-Type", "value": "application/javascript" }
       ]
     },
     {
-      "source": "/bin/(.*).js",
+      "source": "/boot/bin/(.*)\\.js",
       "headers": [
         { "key": "Content-Type", "value": "application/javascript" }
       ]
     },
     {
-      "source": "/repo/packages/(.*).js",
+      "source": "/boot/repo/packages/(.*)\\.js",
       "headers": [
         { "key": "Content-Type", "value": "application/javascript" }
       ]
