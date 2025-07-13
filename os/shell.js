@@ -140,7 +140,7 @@ function executeCommand(command, args) {
     });
 }
 builtInCommands = {
-    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, cd, adt, sudo',
+    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, cd, pwd, adt, sudo',
     echo: (args) => args.join(' '),
     memstat: () => {
         const stats = getMemoryStats();
@@ -217,6 +217,9 @@ builtInCommands = {
             return '';
         }
         return `cd: no such file or directory: ${resolved}`;
+    },
+    pwd: () => {
+        return currentWorkingDirectory;
     },
     adt: (args) => __awaiter(void 0, void 0, void 0, function* () {
         if (args.length < 1) {

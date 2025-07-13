@@ -3,21 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TylonV Bootloader</title>
+    <title>Lonx OS</title>
     <style>
-        body {
-            background-color: #000;
-            color: #fff;
-            font-family: 'monospace', 'Courier New', Courier;
-            font-size: 16px;
+        html, body {
+            height: 100%;
             margin: 0;
             padding: 0;
-            overflow: hidden;
+            overflow: hidden; /* Prevent body scrollbars */
+        }
+        body {
+            background-color: #1e1e1e; /* Darker, more modern background */
+            color: #dcdcdc; /* Off-white for better readability */
+            font-family: 'Menlo', 'Consolas', 'monospace', 'Courier New', Courier;
+            font-size: 16px;
         }
         #boot-screen {
-            padding: 20px;
+            padding: 10px;
             white-space: pre-wrap;
             word-wrap: break-word;
+            height: 100%;
+            overflow-y: scroll; /* Enable vertical scrolling */
+            box-sizing: border-box;
         }
         #nano-editor {
             display: none;
@@ -29,7 +35,7 @@
             background-color: #282a36;
             color: #f8f8f2;
             border: none;
-            font-family: 'monospace', 'Courier New', Courier;
+            font-family: 'Menlo', 'Consolas', 'monospace', 'Courier New', Courier;
             font-size: 16px;
             padding: 10px;
             box-sizing: border-box;
@@ -39,22 +45,27 @@
         .cursor {
             animation: blink 1s step-end infinite;
             display: inline-block;
-            width: 10px;
-            background-color: #fff;
+            width: 9px; /* Adjusted for better font matching */
+            background-color: #dcdcdc;
         }
         @keyframes blink {
             from, to { background-color: transparent }
-            50% { background-color: #fff; }
+            50% { background-color: #dcdcdc; }
         }
         .selected {
             background-color: #fff;
             color: #000;
         }
     </style>
+    <meta name="description" content="Lonx is a lightweight, browser-based OS.">
 </head>
 <body>
-    <div id="boot-screen"></div>
-    <textarea id="nano-editor" style="display: none;"></textarea>
-    <script type="module" src="tylon.js"></script>
+    <pre id="boot-screen"></pre>
+    <textarea id="nano-editor" spellcheck="false"></textarea>
+    <script type="module">
+        import { bootKernel } from './os/kernel.js';
+        const bootScreen = document.getElementById('boot-screen');
+        bootKernel(bootScreen);
+    </script>
 </body>
 </html>
