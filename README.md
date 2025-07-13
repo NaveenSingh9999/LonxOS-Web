@@ -1,99 +1,40 @@
-# Lonx OS Documentation
+# Lonx OS
 
-This document provides instructions on how to add new repositories for the `mim` package manager and how to create new modules (commands) for Lonx OS.
+**Lonx OS** is a lightweight, browser-based operating system designed to simulate a classic command-line environment entirely in your web browser. It features a modular kernel, a virtual filesystem, process and memory management, and a package manager for installing new applications.
 
-## Managing `mim` Repositories
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FNaveenSingh9999%2FLonx)
 
-The `mim` package manager fetches packages from a list of repository URLs. This list is stored in `/etc/mim/sources.list`.
+## Features
 
-### Viewing Sources
+-   **Unix-like Shell:** A familiar command-line interface with commands like `ls`, `cd`, `cat`, `rm`, `echo`, `pwd`, and more.
+-   **Virtual Filesystem:** A persistent, in-browser filesystem that stores your files and directories in `localStorage`.
+-   **Package Manager (`mim`):** The Lonx Module and Installation Manager (`mim`) allows you to install new commands and applications from external repositories.
+-   **Networking Tools:** Includes `wget` for downloading files and `adt` for network diagnostics, all powered by a resilient, multi-proxy CORS fetching system.
+-   **Text Editor (`nano`):** A full-screen text editor for creating and editing files directly within the OS.
+-   **Sudo:** A `sudo` command to perform actions with elevated (simulated) privileges.
+-   **Process Management:** Basic process management with `ps` to view running processes.
 
-To see your current list of repositories, use the `sources` command:
+## Live Demo
 
-```
-mim sources
-```
+You can try Lonx OS live at: **[https://lonx.vercel.app/boot/tylon.html](https://lonx.vercel.app/boot/tylon.html)**
 
-### Adding a Repository
+## Getting Started
 
-To add a new repository, use the `addrepo` command, followed by the URL to the repository's `index.json` file.
+Simply open the [live demo link](https://lonx.vercel.app/boot/tylon.html) to start using Lonx OS. Here are a few commands to try:
 
-```
-mim addrepo http://example.com/lonx-repo/index.json
-```
+-   `help`: See a list of available commands.
+-   `ls`: List files in the current directory.
+-   `mim list`: See a list of installed packages.
+-   `mim install hello`: Install a sample "hello world" program.
+-   `hello`: Run the newly installed program.
+-   `man mim`: Read the manual for the `mim` command.
 
-The `index.json` file should be an array of objects, where each object describes a package.
+## Development
 
-**`index.json` format:**
-```json
-[
-  {
-    "name": "my-command",
-    "desc": "A description of my cool command.",
-    "version": "1.0.0",
-    "url": "packages/my-command.js"
-  }
-]
-```
-- `name`: The name of the command to be used in the shell.
-- `desc`: A brief description.
-- `version`: The version number.
-- `url`: The relative path from the `index.json` file to the package's JavaScript file.
+Interested in building your own applications for Lonx OS? The development process is simple and requires only basic JavaScript knowledge.
 
-### Deleting a Repository
-
-To remove a repository, use the `delrepo` command:
-
-```
-mim delrepo http://example.com/lonx-repo/index.json
-```
+For a complete guide on creating, packaging, and distributing your own Lonx OS applications, please see the **[Application Development Guide](./DOCUMENTATION.md)**.
 
 ---
 
-## Creating New Modules (Commands)
-
-Lonx OS commands are JavaScript modules that are dynamically loaded and executed by the shell.
-
-### Module Structure
-
-A command is a single JavaScript file that exports a default function. This function is the entry point for your command.
-
-**File:** `/bin/my-command.js`
-
-```javascript
-export default async function main(args, lonx) {
-    // lonx is the API object provided by the OS
-    const { shell, fs } = lonx;
-
-    // args is an array of strings passed to your command
-    const firstArg = args[0];
-
-    shell.print("Hello from my-command!");
-
-    // You can interact with the filesystem
-    const fileContent = fs.read('/home/user/somefile.txt');
-    if (typeof fileContent === 'string') {
-        shell.print(fileContent);
-    }
-}
-```
-
-### The `lonx` API Object
-
-Your command receives one argument: `lonx`. This object is your gateway to interacting with the operating system. It provides access to:
-
-- `lonx.shell`: Functions for interacting with the shell.
-  - `print(text)`: Prints a string to the shell.
-  - `updateLine(text)`: Overwrites the current line (useful for progress bars).
-  - `setInputMode(mode, handler)`: Switches input between the shell and a custom handler (like in `nano`).
-  - `resolvePath(path)`: Resolves a relative path to an absolute one.
-- `lonx.fs`: Functions for file system operations.
-  - `read(path)`: Reads a file or directory.
-  - `write(path, content)`: Writes content to a file.
-
-### Publishing Your Command
-
-1.  Host your command's JS file and an `index.json` file on a web server or a service like GitHub Pages.
-2.  Add your repository's `index.json` URL to Lonx OS using `mim addrepo`.
-3.  Install your command using `mim install my-command`.
-4.  Run it: `my-command`.
+*Lonx OS is a project for demonstration and educational purposes.*
