@@ -53,7 +53,7 @@ export function updateConfig(keyPath: string, value: any): void {
   }
 
   const keys = keyPath.split('.');
-  let current = config;
+  let current: any = config;
   
   for (let i = 0; i < keys.length - 1; i++) {
     if (current[keys[i]] === undefined) {

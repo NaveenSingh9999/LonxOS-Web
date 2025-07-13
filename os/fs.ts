@@ -1,81 +1,82 @@
 // os/fs.ts
+import { getConfig } from './core/config.js';
 
-type FileSystem = { [key: string]: string | FileSystem };
-
-let fs: FileSystem = {
-    '/': {
-        'home': {
-            'user': {}
-        },
-        'etc': {
-            'mim': {}
-        },
-        'bin': {}
-    }
-};
+let fs: any = null;
 
 export function initFS() {
-    console.log('[FS] Initializing virtual file system...');
-    // Load from localStorage if available
-    const savedFS = localStorage.getItem('lonxFS');
+    const savedFS = localStorage.getItem('/');
     if (savedFS) {
         fs = JSON.parse(savedFS);
+    } else {
+        fs = {
+            'home': {
+                'user': {}
+            },
+            'etc': {
+                'config.json': JSON.stringify(getConfig(), null, 2)
+            },
+            'bin': {},
+            'tmp': {}
+        };
+        localStorage.setItem('/', JSON.stringify(fs));
     }
 }
 
-function saveFS() {
-    localStorage.setItem('lonxFS', JSON.stringify(fs));
-}
-
-function findNode(path: string): { parent: FileSystem | null, node: string | FileSystem | null, key: string } {
+export function read(path: string): any {
+    if (!fs) return null;
+    if (path === '/') return fs;
+    
     const parts = path.split('/').filter(p => p);
-    let current: FileSystem = fs['/'] as FileSystem;
-    let parent: FileSystem | null = null;
-    let key = '';
-
-    for (let i = 0; i < parts.length; i++) {
-        key = parts[i];
-        if (typeof current !== 'object' || !current.hasOwnProperty(key)) {
-            return { parent: null, node: null, key: '' };
+    let current = fs;
+    
+    for (const part of parts) {
+        if (current[part] === undefined) {
+            return null;
         }
-        parent = current;
-        current = current[key] as FileSystem;
+        current = current[part];
     }
-    return { parent, node: current, key };
-}
-
-
-export function read(path: string): string | FileSystem | null {
-    if (path === '/') return fs['/'];
-    const { node } = findNode(path);
-    return node;
+    
+    return current;
 }
 
 export function write(path: string, content: string): boolean {
+    if (!fs) return false;
     const parts = path.split('/').filter(p => p);
     const filename = parts.pop();
     if (!filename) return false;
-
-    const dirPath = '/' + parts.join('/');
-    const dirNode = read(dirPath);
-
-    if (typeof dirNode === 'object' && dirNode !== null) {
-        (dirNode as FileSystem)[filename] = content;
-        saveFS();
-        return true;
+    
+    let current = fs;
+    for (const part of parts) {
+        if (current[part] === undefined) {
+            current[part] = {};
+        }
+        current = current[part];
     }
-    return false;
+    
+    current[filename] = content;
+    localStorage.setItem('/', JSON.stringify(fs));
+    return true;
 }
 
 export function remove(path: string): boolean {
-    if (path === '/') return false; // Cannot remove root
-
-    const { parent, node, key } = findNode(path);
-
-    if (parent && key && node !== null) {
-        delete parent[key];
-        saveFS();
+    if (!fs || path === '/') return false;
+    const parts = path.split('/').filter(p => p);
+    const filename = parts.pop();
+    if (!filename) return false;
+    
+    let current = fs;
+    for (const part of parts) {
+        if (current[part] === undefined) {
+            return false;
+        }
+        current = current[part];
+    }
+    
+    if (current[filename] !== undefined) {
+        delete current[filename];
+        localStorage.setItem('/', JSON.stringify(fs));
         return true;
     }
+    
     return false;
 }

@@ -8,7 +8,7 @@ const defaultRepo = 'https://naveensingh9999.github.io/standard-module-lib-lonxo
 function getRepos(): string[] {
     const sources = read('/etc/mim/sources.list');
     if (typeof sources === 'string') {
-        return sources.split('\n').filter(s => s.trim() !== '');
+        return sources.split('\n').filter((s: string) => s.trim() !== '');
     }
     // If sources.list doesn't exist, create it with the default repo
     write('/etc/mim/sources.list', defaultRepo);

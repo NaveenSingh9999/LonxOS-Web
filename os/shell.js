@@ -13,6 +13,7 @@ import { mim } from './mim.js';
 import * as net from './core/net.js';
 import { ptm } from './core/ptm.js';
 import { memoryController } from './memory.js';
+import { getConfig } from './core/config.js';
 // --- Threading Test Command ---
 function thread_test(args, isSudo, inBackground, process) {
     return __awaiter(this, void 0, void 0, function* () {
@@ -54,6 +55,48 @@ function thread_test(args, isSudo, inBackground, process) {
             ptm.postMessageToThread(pid, threadId, { command: 'exec', payload });
             // The promise will be resolved/rejected by the onMessage/onError handlers.
         });
+    });
+}
+function runCommand(args, isSudo, inBackground, process) {
+    return __awaiter(this, void 0, void 0, function* () {
+        if (!process) {
+            return "run: command must be run within a process.";
+        }
+        if (args.length === 0) {
+            process.stderr.push("run: missing file operand");
+            return;
+        }
+        const filePath = args[0];
+        if (!filePath.endsWith('.rn')) {
+            process.stderr.push(`run: cannot execute '${filePath}', not a .rn file.`);
+            return;
+        }
+        const resolvedPath = resolvePath(filePath);
+        const scriptContent = read(resolvedPath);
+        if (typeof scriptContent !== 'string' || scriptContent.length === 0) {
+            process.stderr.push(`run: cannot access '${resolvedPath}': No such file or directory`);
+            return;
+        }
+        try {
+            const blob = new Blob([scriptContent], { type: "text/javascript" });
+            const url = URL.createObjectURL(blob);
+            try {
+                const module = yield import(url);
+                if (typeof module.default === 'function') {
+                    const moduleArgs = args.slice(1);
+                    yield module.default(moduleArgs, lonx_api, isSudo, process);
+                }
+                else {
+                    process.stderr.push(`Invalid executable format for ${filePath}: no default export function.`);
+                }
+            }
+            finally {
+                URL.revokeObjectURL(url);
+            }
+        }
+        catch (e) {
+            process.stderr.push(`Error executing ${filePath}: ${e.message}`);
+        }
     });
 }
 let bootScreen;
@@ -127,6 +170,9 @@ let isSudo = false; // Global flag for sudo access
 // Forward declaration of builtInCommands
 let builtInCommands;
 const lonx_api = {
+    get config() {
+        return getConfig();
+    },
     shell: {
         print: shellPrint,
         updateLine: shellUpdateLine,
@@ -189,13 +235,26 @@ function executeSingleCommand(command_1, args_1) {
                 }
             }
             else if (command) {
-                const binPath = `/bin/${command}`;
+                const binPath = `/bin/${command}.js`; // Look for .js files
                 const scriptContent = read(binPath);
                 if (typeof scriptContent === 'string' && scriptContent.length > 0) {
                     try {
-                        // Modify the function to accept the process object
-                        const executable = new Function('args', 'lonx_api', 'isSudo', 'process', scriptContent);
-                        yield executable(args, lonx_api, isSudo, process);
+                        // Use dynamic import for module-based executables
+                        const blob = new Blob([scriptContent], { type: "text/javascript" });
+                        const url = URL.createObjectURL(blob);
+                        try {
+                            const module = yield import(url);
+                            if (typeof module.default === 'function') {
+                                // Pass the process object as the fourth argument to main
+                                yield module.default(args, lonx_api, isSudo, process);
+                            }
+                            else {
+                                process.stderr.push(`Invalid executable format for ${command}: no default export function.`);
+                            }
+                        }
+                        finally {
+                            URL.revokeObjectURL(url);
+                        }
                     }
                     catch (e) {
                         process.stderr.push(`Error executing ${command}: ${e.message}`);
@@ -285,7 +344,7 @@ function parseCommand(input) {
     return pipeline;
 }
 builtInCommands = {
-    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, kill, jobs, bg, fg, sleep, spin, cd, pwd, adt, sudo, thread_test',
+    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, kill, jobs, bg, fg, sleep, spin, cd, pwd, adt, sudo, thread_test, run',
     echo: (args) => args.join(' '),
     memstat: () => {
         const stats = memoryController;
@@ -315,6 +374,9 @@ builtInCommands = {
                 const item = read(itemPath);
                 if (typeof item === 'object' && item !== null) {
                     return `<span style="color: #87CEFA;">${key}/</span>`; // Blue for directories
+                }
+                if (key.endsWith('.rn')) {
+                    return `<span style="color: #f975d4;">${key}</span>`; // Pink for executables
                 }
                 return key;
             }).join('\n');
@@ -358,6 +420,7 @@ builtInCommands = {
         const success = remove(resolved);
         return success ? '' : `rm: cannot remove '${resolved}'`;
     },
+    run: runCommand,
     thread_test,
     ps: (args) => {
         const processes = ptm.list();

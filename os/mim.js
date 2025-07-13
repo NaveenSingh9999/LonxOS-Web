@@ -15,7 +15,7 @@ const defaultRepo = 'https://naveensingh9999.github.io/standard-module-lib-lonxo
 function getRepos() {
     const sources = read('/etc/mim/sources.list');
     if (typeof sources === 'string') {
-        return sources.split('\n').filter(s => s.trim() !== '');
+        return sources.split('\n').filter((s) => s.trim() !== '');
     }
     // If sources.list doesn't exist, create it with the default repo
     write('/etc/mim/sources.list', defaultRepo);
@@ -49,7 +49,7 @@ function installPackage(pkgName) {
                     const packageUrl = new URL(target.url, baseUrl).href;
                     const codeRes = yield tryFetch(packageUrl); // Use it again for the package
                     const code = yield codeRes.text();
-                    write(`/bin/${pkgName}`, code);
+                    write(`/bin/${pkgName}.js`, code); // Append .js to the filename
                     shellPrint(`[mim] Installed: ${pkgName} v${target.version}`);
                     return;
                 }
@@ -63,13 +63,16 @@ function installPackage(pkgName) {
 }
 function removePackage(pkgName) {
     // This is a simplified remove, a real one would need to check dependencies etc.
-    write(`/bin/${pkgName}`, ''); // Effectively deletes the file by making it empty
+    write(`/bin/${pkgName}.js`, ''); // Effectively deletes the file by making it empty
     shellPrint(`[mim] Removed package: ${pkgName}`);
 }
 function listPackages() {
     const binContent = read('/bin');
     if (typeof binContent === 'object' && binContent !== null) {
-        return Object.keys(binContent).filter(k => binContent[k].length > 0).join('\n');
+        return Object.keys(binContent)
+            .filter(k => binContent[k].length > 0)
+            .map(k => k.replace('.js', '')) // Remove .js extension for display
+            .join('\n');
     }
     return 'No packages installed.';
 }
