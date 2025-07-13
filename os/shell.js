@@ -20,6 +20,15 @@ let historyIndex = -1;
 let inputMode = 'shell';
 let editorKeyHandler = null;
 let currentWorkingDirectory = '/home/user'; // Start in user's home directory
+let shellConfig = {
+    username: 'user',
+    hostname: 'lonx'
+};
+export function updateShellPrompt(username, hostname) {
+    shellConfig.username = username;
+    shellConfig.hostname = hostname;
+    renderShell();
+}
 export function shellPrint(text) {
     if (bootScreen) {
         bootScreen.innerHTML += `\n${text}`;
@@ -94,10 +103,10 @@ function renderShell() {
     if (cursorSpan)
         cursorSpan.remove();
     const promptPath = currentWorkingDirectory.replace('/home/user', '~');
-    bootScreen.innerHTML += `\n<span style="color: #50fa7b;">user@lonx</span>:<span style="color: #87CEFA;">${promptPath}</span>$ ${currentLine}<span class="cursor"> </span>`;
+    bootScreen.innerHTML += `\n<span style="color: #50fa7b;">${shellConfig.username}@${shellConfig.hostname}</span>:<span style="color: #87CEFA;">${promptPath}</span>$ ${currentLine}<span class="cursor"> </span>`;
     bootScreen.scrollTop = bootScreen.scrollHeight;
 }
-function executeCommand(command, args) {
+export function executeCommand(command, args) {
     return __awaiter(this, void 0, void 0, function* () {
         if (command in builtInCommands) {
             try {
@@ -253,59 +262,73 @@ builtInCommands = {
         isSudo = false; // Reset after command execution
     })
 };
-function handleShellInput(e) {
+export function handleShellInput(e) {
     return __awaiter(this, void 0, void 0, function* () {
         if (inputMode === 'editor' && editorKeyHandler) {
             editorKeyHandler(e);
             return;
         }
         e.preventDefault();
-        // Remove the last line (the prompt) to redraw it
-        const lastLineIndex = bootScreen.innerHTML.lastIndexOf('\n');
-        if (lastLineIndex !== -1) {
-            bootScreen.innerHTML = bootScreen.innerHTML.substring(0, lastLineIndex);
-        }
         if (e.key === 'Enter') {
-            const fullCommand = currentLine.trim();
-            commandHistory.unshift(fullCommand);
-            historyIndex = -1;
+            // Finalize the current line with the command
+            const lastLineIndex = bootScreen.innerHTML.lastIndexOf('\n');
+            if (lastLineIndex !== -1) {
+                bootScreen.innerHTML = bootScreen.innerHTML.substring(0, lastLineIndex);
+            }
             const promptPath = currentWorkingDirectory.replace('/home/user', '~');
-            const prompt = `\n<span style="color: #50fa7b;">user@lonx</span>:<span style="color: #87CEFA;">${promptPath}</span>$ ${fullCommand}`;
+            const prompt = `\n<span style="color: #50fa7b;">${shellConfig.username}@${shellConfig.hostname}</span>:<span style="color: #87CEFA;">${promptPath}</span>$ ${currentLine}`;
             bootScreen.innerHTML += prompt;
+            // Execute the command
+            const fullCommand = currentLine.trim();
+            if (fullCommand) {
+                commandHistory.unshift(fullCommand);
+            }
+            historyIndex = -1;
             const [command, ...args] = fullCommand.split(' ');
             currentLine = '';
-            yield executeCommand(command, args);
+            if (command) {
+                yield executeCommand(command, args);
+            }
+            // Render the new, empty prompt
             renderShell();
         }
-        else if (e.key === 'Backspace') {
-            currentLine = currentLine.slice(0, -1);
-        }
-        else if (e.key === 'ArrowUp') {
-            if (historyIndex < commandHistory.length - 1) {
-                historyIndex++;
-                currentLine = commandHistory[historyIndex];
+        else {
+            // For any other key, just update the input line
+            const lastLineIndex = bootScreen.innerHTML.lastIndexOf('\n');
+            if (lastLineIndex !== -1) {
+                bootScreen.innerHTML = bootScreen.innerHTML.substring(0, lastLineIndex);
             }
-        }
-        else if (e.key === 'ArrowDown') {
-            if (historyIndex > 0) {
-                historyIndex--;
-                currentLine = commandHistory[historyIndex];
+            if (e.key === 'Backspace') {
+                currentLine = currentLine.slice(0, -1);
             }
-            else {
-                currentLine = '';
-                historyIndex = -1;
+            else if (e.key === 'ArrowUp') {
+                if (historyIndex < commandHistory.length - 1) {
+                    historyIndex++;
+                    currentLine = commandHistory[historyIndex];
+                }
             }
+            else if (e.key === 'ArrowDown') {
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    currentLine = commandHistory[historyIndex];
+                }
+                else {
+                    currentLine = '';
+                    historyIndex = -1;
+                }
+            }
+            else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'v') {
+                navigator.clipboard.readText().then(text => {
+                    currentLine += text;
+                    renderShell(); // Re-render after paste
+                });
+                return; // Return early as paste is async
+            }
+            else if (e.key.length === 1 && !e.ctrlKey && !e.altKey) {
+                currentLine += e.key;
+            }
+            renderShell();
         }
-        else if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'v') {
-            navigator.clipboard.readText().then(text => {
-                currentLine += text;
-                renderShell();
-            });
-        }
-        else if (e.key.length === 1 && !e.ctrlKey && !e.altKey) {
-            currentLine += e.key;
-        }
-        renderShell();
     });
 }
 export function initShell(element) {

@@ -7,7 +7,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import { boot } from '../os/kernel.js';
+import { bootKernel } from '../os/kernel.js';
 class TylonV {
     constructor() {
         this.config = null;
@@ -113,7 +113,7 @@ POST OK.
         // Simulate boot process
         setTimeout(() => {
             this.bootScreen.innerHTML = ''; // Clear the bootloader screen
-            boot();
+            bootKernel(this.bootScreen);
         }, 1000);
     }
     handleKeyPress(e) {

@@ -1,4 +1,4 @@
-import { bootKernel } from '../os/kernel.js';
+import { boot } from '../os/kernel.js';
 
 interface BootConfig {
     boot: {
@@ -115,7 +115,7 @@ POST OK.
         // Simulate boot process
         setTimeout(() => {
             this.bootScreen.innerHTML = ''; // Clear the bootloader screen
-            bootKernel(this.bootScreen);
+            boot();
         }, 1000);
     }
 
