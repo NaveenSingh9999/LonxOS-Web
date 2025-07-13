@@ -4,6 +4,7 @@ import { mim } from './mim.js';
 import * as net from './core/net.js';
 import { ptm, Process } from './core/ptm.js';
 import { memoryController } from './memory.js';
+import { getConfig } from './core/config.js';
 
 // --- Threading Test Command ---
 async function thread_test(args: string[], isSudo: boolean, inBackground?: boolean, process?: Process | null): Promise<string> {
@@ -182,6 +183,9 @@ let isSudo = false; // Global flag for sudo access
 let builtInCommands: { [key: string]: (args: string[], isSudo: boolean, inBackground?: boolean, process?: Process | null) => string | void | Promise<string | void> };
 
 const lonx_api = {
+    get config() {
+        return getConfig();
+    },
     shell: {
         print: shellPrint,
         updateLine: shellUpdateLine,
