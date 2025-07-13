@@ -111,6 +111,14 @@ function createEditorInterface() {
             white-space: pre;
             overflow-wrap: normal;
             overflow: auto;
+            caret-color: #ffffff;
+            cursor: text;
+        }
+        
+        #nano-editor:focus {
+            outline: none;
+            background: #1e1e1e;
+            color: #ffffff;
         }
         
         #nano-status-bar {
@@ -255,12 +263,21 @@ function showEditor() {
     const container = document.getElementById('nano-editor-container');
     container.style.display = 'flex';
     
-    editorState.editorEl.focus();
+    // Focus the editor and ensure it captures input
+    setTimeout(() => {
+        editorState.editorEl.focus();
+        editorState.editorEl.click(); // Ensure focus
+    }, 50);
     
     // Set up event listeners
     editorState.editorEl.addEventListener('input', handleInput);
+    editorState.editorEl.addEventListener('keydown', handleEditorKeys);
     editorState.editorEl.addEventListener('scroll', handleScroll);
-    document.addEventListener('keydown', handleEditorKeys);
+    editorState.editorEl.addEventListener('focus', handleFocus);
+    editorState.editorEl.addEventListener('blur', handleBlur);
+    
+    // Prevent document from capturing keypresses
+    document.addEventListener('keydown', preventDocumentKeys, true);
 }
 
 function hideEditor() {
@@ -272,8 +289,13 @@ function hideEditor() {
     
     // Remove event listeners
     editorState.editorEl.removeEventListener('input', handleInput);
+    editorState.editorEl.removeEventListener('keydown', handleEditorKeys);
     editorState.editorEl.removeEventListener('scroll', handleScroll);
-    document.removeEventListener('keydown', handleEditorKeys);
+    editorState.editorEl.removeEventListener('focus', handleFocus);
+    editorState.editorEl.removeEventListener('blur', handleBlur);
+    
+    // Re-enable document key capture
+    document.removeEventListener('keydown', preventDocumentKeys, true);
     
     // Return control to shell
     editorState.lonx_api.shell.setInputMode('shell');
@@ -307,6 +329,9 @@ function handleScroll(e) {
 }
 
 function handleEditorKeys(e) {
+    // Stop event propagation to prevent shell from capturing keys
+    e.stopPropagation();
+    
     if (e.ctrlKey) {
         switch (e.key.toLowerCase()) {
             case 's':
@@ -335,6 +360,27 @@ function handleEditorKeys(e) {
                 cutCurrentLine();
                 break;
         }
+    }
+}
+
+function handleFocus(e) {
+    // Ensure the editor stays focused and captures all input
+    console.log('[nano] Editor focused');
+}
+
+function handleBlur(e) {
+    // Refocus the editor if it loses focus while active
+    if (document.getElementById('nano-editor-container').style.display === 'flex') {
+        setTimeout(() => {
+            editorState.editorEl.focus();
+        }, 10);
+    }
+}
+
+function preventDocumentKeys(e) {
+    // Prevent document from capturing any keys while editor is open
+    if (document.getElementById('nano-editor-container').style.display === 'flex') {
+        e.stopPropagation();
     }
 }
 
@@ -427,9 +473,8 @@ async function main(args, lonx) {
 
     // Initialize editor
     lonx.shell.setInputMode('editor');
-    showEditor();
     
-    // Initialize UI
+    // Initialize UI first
     const elements = {
         positionInfo: document.getElementById('nano-position-info'),
         fileStatus: document.getElementById('nano-file-status'),
@@ -438,6 +483,15 @@ async function main(args, lonx) {
     
     updateLineNumbers(editorState.editorEl, document.getElementById('nano-line-numbers'));
     updateStatusBar(editorState.editorEl, elements);
+    
+    // Show editor and ensure focus
+    showEditor();
+    
+    // Force focus after a short delay to ensure DOM is ready
+    setTimeout(() => {
+        editorState.editorEl.focus();
+        editorState.editorEl.setSelectionRange(0, 0); // Position cursor at start
+    }, 100);
     
     lonx.shell.print(`Opened ${editorState.filePath} in nano editor.`);
 }

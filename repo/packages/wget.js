@@ -62,11 +62,18 @@ class WgetDownloader {
      * Show download progress
      */
     showProgress(downloaded, total, filename) {
-        const percent = total > 0 ? Math.round((downloaded / total) * 100) : 0;
-        const downloadedFormatted = this.formatFileSize(downloaded);
-        const totalFormatted = total > 0 ? this.formatFileSize(total) : 'Unknown';
+        // Ensure all values are valid numbers
+        const safeDownloaded = Math.max(0, downloaded || 0);
+        const safeTotal = Math.max(0, total || 0);
         
-        const progressBar = '='.repeat(Math.floor(percent / 2)) + ' '.repeat(50 - Math.floor(percent / 2));
+        const percent = safeTotal > 0 ? Math.min(100, Math.max(0, Math.round((safeDownloaded / safeTotal) * 100))) : 0;
+        const downloadedFormatted = this.formatFileSize(safeDownloaded);
+        const totalFormatted = safeTotal > 0 ? this.formatFileSize(safeTotal) : 'Unknown';
+        
+        // Ensure progress bar values are non-negative and within bounds
+        const progressLength = Math.max(0, Math.min(50, Math.floor(percent / 2)));
+        const remainingLength = Math.max(0, 50 - progressLength);
+        const progressBar = '='.repeat(progressLength) + ' '.repeat(remainingLength);
         
         this.shell.updateLine(`Downloading ${filename}: [${progressBar}] ${percent}% (${downloadedFormatted}/${totalFormatted})`);
     }
@@ -128,11 +135,13 @@ class WgetDownloader {
                     
                     if (done) break;
                     
-                    downloadedSize += value.length;
-                    result += decoder.decode(value, { stream: true });
-                    
-                    if (totalSize > 0) {
-                        this.showProgress(downloadedSize, totalSize, filename);
+                    if (value) {
+                        downloadedSize += value.length;
+                        result += decoder.decode(value, { stream: true });
+                        
+                        if (totalSize > 0) {
+                            this.showProgress(downloadedSize, totalSize, filename);
+                        }
                     }
                     
                     // Small delay to show progress
@@ -152,7 +161,10 @@ class WgetDownloader {
                 const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
                 content = `data:${contentType};base64,${btoa(binary)}`;
                 
-                this.showProgress(downloadedSize, totalSize || downloadedSize, filename);
+                // Show final progress
+                if (downloadedSize > 0) {
+                    this.showProgress(downloadedSize, totalSize || downloadedSize, filename);
+                }
             }
 
             // Save to filesystem
