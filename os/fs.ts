@@ -60,11 +60,20 @@ export function write(path: string, content: string): boolean {
     const dirNode = read(dirPath);
 
     if (typeof dirNode === 'object' && dirNode !== null) {
-        if (content === '' && (dirNode as FileSystem)[filename]) {
-             delete (dirNode as FileSystem)[filename]; // "remove" file
-        } else {
-            (dirNode as FileSystem)[filename] = content;
-        }
+        (dirNode as FileSystem)[filename] = content;
+        saveFS();
+        return true;
+    }
+    return false;
+}
+
+export function remove(path: string): boolean {
+    if (path === '/') return false; // Cannot remove root
+
+    const { parent, node, key } = findNode(path);
+
+    if (parent && key && node !== null) {
+        delete parent[key];
         saveFS();
         return true;
     }

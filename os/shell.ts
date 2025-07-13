@@ -1,7 +1,7 @@
 // os/shell.ts
 import { getMemoryStats } from './memory.js';
 import { getProcessList } from './process.js';
-import { read, write } from './fs.js';
+import { read, write, remove } from './fs.js';
 import { mim } from './mim.js';
 import * as net from './core/net.js';
 
@@ -60,8 +60,42 @@ function resolvePath(path: string): string {
     return '/' + newPath.join('/');
 }
 
-const builtInCommands: { [key: string]: (args: string[]) => string | Promise<void> } = {
-    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, mim, ps, cd, adt',
+let isSudo = false; // Global flag for sudo access
+
+async function executeCommand(command: string, args: string[]) {
+    if (command in builtInCommands) {
+        try {
+            // The 'sudo' command itself doesn't get sudo privileges, it grants them.
+            if (command === 'sudo') {
+                 await builtInCommands[command](args, false);
+                 return;
+            }
+            const result = await builtInCommands[command](args, isSudo);
+            if (result) {
+                shellPrint(result);
+            }
+        } catch (e: any) {
+            shellPrint(`Error: ${e.message}`);
+        }
+    } else if (command) {
+        // Try to execute from /bin
+        const binPath = `/bin/${command}`;
+        const scriptContent = read(binPath);
+        if (typeof scriptContent === 'string' && scriptContent.length > 0) {
+            try {
+                const executable = new Function('args', 'lonx_api', 'isSudo', scriptContent);
+                await executable(args, lonx_api, isSudo);
+            } catch (e: any) {
+                shellPrint(`Error executing ${command}: ${e.message}`);
+            }
+        } else {
+            shellPrint(`Command not found: ${command}`);
+        }
+    }
+}
+
+const builtInCommands: { [key: string]: (args: string[], isSudo: boolean) => string | Promise<void> } = {
+    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, cd, adt, sudo',
     echo: (args) => args.join(' '),
     memstat: () => {
         const stats = getMemoryStats();
@@ -109,6 +143,15 @@ const builtInCommands: { [key: string]: (args: string[]) => string | Promise<voi
         const success = write(resolved, '');
         return success ? '' : `touch: cannot create file '${resolved}'`;
     },
+    rm: (args, isSudo) => {
+        const path = args[0];
+        if (!path) return 'rm: missing operand';
+        const resolved = resolvePath(path);
+        if (resolved === '/' && !isSudo) return 'rm: cannot remove root directory without sudo';
+
+        const success = remove(resolved);
+        return success ? '' : `rm: cannot remove '${resolved}': No such file or directory`;
+    },
     ps: () => {
         const processes = getProcessList();
         let output = 'PID\tNAME\n';
@@ -145,7 +188,19 @@ const builtInCommands: { [key: string]: (args: string[]) => string | Promise<voi
             shellPrint(`[adt] Error: ${e.message}`);
         }
     },
-    mim: (args) => mim(args)
+    mim: (args) => mim(args),
+    sudo: async (args) => {
+        if (args.length === 0) {
+            shellPrint('sudo: missing command');
+            return;
+        }
+        const [command, ...commandArgs] = args;
+        
+        isSudo = true;
+        // shellPrint('[sudo] Running with elevated privileges...');
+        await executeCommand(command, commandArgs);
+        isSudo = false; // Reset after command execution
+    }
 };
 
 const lonx_api = {
@@ -158,6 +213,7 @@ const lonx_api = {
     fs: {
         read: read,
         write: write,
+        remove: remove,
     },
     net: {
         tryFetch: net.tryFetch, // Expose the new function
@@ -192,34 +248,21 @@ async function handleShellInput(e: KeyboardEvent) {
 
 
     if (e.key === 'Enter') {
-        bootScreen.innerHTML += `\n> ${currentLine}`;
-        const [command, ...args] = currentLine.trim().split(' ');
-        
-        if (command in builtInCommands) {
-            const output = await builtInCommands[command](args);
-            if (output) shellPrint(output as string);
-        } else {
-            // Try to execute as a /bin command
-            const binPath = resolvePath(`/bin/${command}`);
-            const binContent = read(binPath);
-            if (typeof binContent === 'string' && binContent.length > 0) {
-                try {
-                    const pkgModule = `data:text/javascript,${encodeURIComponent(binContent)}`;
-                    const { default: main } = await import(pkgModule);
-                    main(args, lonx_api);
-                } catch (err) {
-                    shellPrint(`Error executing ${command}: ${err}`);
-                    if ((err as Error).message.includes('module specifier')) {
-                        shellPrint(`Hint: The package might be outdated or corrupted. Try running 'mim install ${command}' to fix it.`);
-                    }
-                }
-            } else if (currentLine.trim() !== '') {
-                shellPrint(`Command not found: ${command}`);
-            }
-        }
-        commandHistory.unshift(currentLine);
-        currentLine = '';
+        const fullCommand = currentLine.trim();
+        commandHistory.unshift(fullCommand);
         historyIndex = -1;
+        
+        const promptPath = currentWorkingDirectory.replace('/home/user', '~');
+        const prompt = `\n<span style="color: #50fa7b;">user@lonx</span>:<span style="color: #87CEFA;">${promptPath}</span>$ ${fullCommand}`;
+        bootScreen.innerHTML += prompt;
+
+
+        const [command, ...args] = fullCommand.split(' ');
+        currentLine = '';
+
+        await executeCommand(command, args);
+
+        renderShell();
     } else if (e.key === 'Backspace') {
         currentLine = currentLine.slice(0, -1);
     } else if (e.key === 'ArrowUp') {
@@ -246,24 +289,15 @@ async function handleShellInput(e: KeyboardEvent) {
     renderShell();
 }
 
-export function startShell(screen: HTMLElement) {
-    bootScreen = screen;
+export function initShell(element: HTMLElement) {
+    bootScreen = element;
     bootScreen.innerHTML = 'Welcome to Lonx Shell v1.0\n';
     renderShell();
     // Replace the global keydown listener with the shell's listener
     document.removeEventListener('keydown', (window as any)._tylonListener);
     document.addEventListener('keydown', handleShellInput);
     (window as any)._shellListener = handleShellInput; // Save for later
-
-    // Add a paste event listener for standard browser pasting
-    document.addEventListener('paste', (e: ClipboardEvent) => {
-        if (inputMode === 'shell') {
-            e.preventDefault();
-            const text = e.clipboardData?.getData('text/plain');
-            if (text) {
-                currentLine += text;
-                renderShell();
-            }
-        }
-    });
 }
+
+// Re-exporting startShell which is an alias for initShell
+export { initShell as startShell };

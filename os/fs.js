@@ -50,12 +50,18 @@ export function write(path, content) {
     const dirPath = '/' + parts.join('/');
     const dirNode = read(dirPath);
     if (typeof dirNode === 'object' && dirNode !== null) {
-        if (content === '' && dirNode[filename]) {
-            delete dirNode[filename]; // "remove" file
-        }
-        else {
-            dirNode[filename] = content;
-        }
+        dirNode[filename] = content;
+        saveFS();
+        return true;
+    }
+    return false;
+}
+export function remove(path) {
+    if (path === '/')
+        return false; // Cannot remove root
+    const { parent, node, key } = findNode(path);
+    if (parent && key && node !== null) {
+        delete parent[key];
         saveFS();
         return true;
     }
