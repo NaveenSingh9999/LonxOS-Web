@@ -31,3 +31,11 @@ export function createProcess(name: string, func: ProcessFunction): number {
 export function getProcessList(): Process[] {
     return processList;
 }
+
+export async function executeCommand(command: string, args: string[]) {
+    // This is a placeholder. In a real OS, this would involve
+    // finding the executable in the path, loading it into memory,
+    // and creating a new process.
+    console.log(`Executing command: ${command} with args: ${args.join(' ')}`);
+    // For now, we'll just log it. The actual execution logic is in the shell.
+}

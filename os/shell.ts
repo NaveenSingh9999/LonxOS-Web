@@ -12,6 +12,16 @@ let historyIndex = -1;
 let inputMode: 'shell' | 'editor' = 'shell';
 let editorKeyHandler: ((e: KeyboardEvent) => void) | null = null;
 let currentWorkingDirectory = '/home/user'; // Start in user's home directory
+let shellConfig = {
+    username: 'user',
+    hostname: 'lonx'
+};
+
+export function updateShellPrompt(username: string, hostname: string) {
+    shellConfig.username = username;
+    shellConfig.hostname = hostname;
+    renderShell();
+}
 
 export function shellPrint(text: string) {
     if (bootScreen) {
@@ -91,11 +101,11 @@ function renderShell() {
     if (cursorSpan) cursorSpan.remove();
 
     const promptPath = currentWorkingDirectory.replace('/home/user', '~');
-    bootScreen.innerHTML += `\n<span style="color: #50fa7b;">user@lonx</span>:<span style="color: #87CEFA;">${promptPath}</span>$ ${currentLine}<span class="cursor"> </span>`;
+    bootScreen.innerHTML += `\n<span style="color: #50fa7b;">${shellConfig.username}@${shellConfig.hostname}</span>:<span style="color: #87CEFA;">${promptPath}</span>$ ${currentLine}<span class="cursor"> </span>`;
     bootScreen.scrollTop = bootScreen.scrollHeight;
 }
 
-async function executeCommand(command: string, args: string[]) {
+export async function executeCommand(command: string, args: string[]) {
     if (command in builtInCommands) {
         try {
             // The 'sudo' command itself doesn't get sudo privileges, it grants them.
@@ -244,7 +254,7 @@ builtInCommands = {
 };
 
 
-async function handleShellInput(e: KeyboardEvent) {
+export async function handleShellInput(e: KeyboardEvent) {
     if (inputMode === 'editor' && editorKeyHandler) {
         editorKeyHandler(e);
         return;
@@ -259,7 +269,7 @@ async function handleShellInput(e: KeyboardEvent) {
             bootScreen.innerHTML = bootScreen.innerHTML.substring(0, lastLineIndex);
         }
         const promptPath = currentWorkingDirectory.replace('/home/user', '~');
-        const prompt = `\n<span style="color: #50fa7b;">user@lonx</span>:<span style="color: #87CEFA;">${promptPath}</span>$ ${currentLine}`;
+        const prompt = `\n<span style="color: #50fa7b;">${shellConfig.username}@${shellConfig.hostname}</span>:<span style="color: #87CEFA;">${promptPath}</span>$ ${currentLine}`;
         bootScreen.innerHTML += prompt;
         
         // Execute the command
