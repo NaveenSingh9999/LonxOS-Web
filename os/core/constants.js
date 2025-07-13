@@ -36,5 +36,4 @@ export const DEFAULT_CONFIG = {
         rootAccess: false,
     },
 };
-
 // yo

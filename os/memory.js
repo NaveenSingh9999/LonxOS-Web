@@ -35,5 +35,4 @@ class MemoryController {
     }
 }
 export const memoryController = new MemoryController();
-
 // yo

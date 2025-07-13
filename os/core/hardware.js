@@ -33,5 +33,4 @@ export function getCpuUsage() {
     // Simulate CPU usage
     return Math.random() * 15 + 5; // Simulate 5-20% usage
 }
-
 // yo
