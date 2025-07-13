@@ -23,8 +23,7 @@ export class UpdateManager {
             enabled: true,
             checkOnBoot: true,
             updateChannels: [
-                'https://naveensingh9999.github.io/standard-module-lib-lonxos/index.json',
-                'https://lonx-updates.vercel.app/index.json' // Fallback channel
+                'https://raw.githubusercontent.com/NaveenSingh9999/LonxOS-Web/refs/heads/main/repo/index.json'
             ],
             lastCheck: '',
             autoUpdate: false, // Manual approval by default

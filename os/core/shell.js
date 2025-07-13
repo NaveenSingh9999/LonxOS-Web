@@ -327,7 +327,7 @@ function parseCommand(input) {
     return pipeline;
 }
 builtInCommands = {
-    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, kill, jobs, bg, fg, sleep, spin, cd, pwd, adt, sudo, thread_test, run',
+    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, kill, jobs, bg, fg, sleep, spin, cd, pwd, adt, sudo, thread_test, run, update, update_check, update_install, update_config',
     echo: (args) => args.join(' '),
     memstat: () => {
         const stats = memoryController;
@@ -559,6 +559,145 @@ builtInCommands = {
     mim: (args, isSudo, inBackground, process) => mim(args),
     sudo: async (args, isSudo, inBackground) => {
         // This is now handled by the parser
+    },
+    // Update system commands
+    update_check: async (args, isSudo, inBackground, process) => {
+        try {
+            const { updateManager } = await import('./core/updater.js');
+            const { available } = await updateManager.checkForUpdates(false);
+            if (available.length === 0) {
+                return '✓ All packages are up to date';
+            }
+            else {
+                let output = `📦 ${available.length} update(s) available:\n\n`;
+                for (const pkg of available) {
+                    output += `  ${pkg.name} → v${pkg.version} - ${pkg.desc}\n`;
+                }
+                output += '\nRun \'update_install\' to update all packages';
+                return output;
+            }
+        }
+        catch (error) {
+            return `✗ Update check failed: ${error instanceof Error ? error.message : String(error)}`;
+        }
+    },
+    update_install: async (args, isSudo, inBackground, process) => {
+        try {
+            const { updateManager } = await import('./core/updater.js');
+            if (args.length === 0) {
+                // Install all updates
+                shellPrint('Installing all available updates...');
+                const updated = await updateManager.updateAllPackages();
+                if (updated > 0) {
+                    return `✓ Successfully updated ${updated} package(s)`;
+                }
+                else {
+                    return 'No updates were installed';
+                }
+            }
+            else {
+                // Install specific package
+                const packageName = args[0];
+                shellPrint(`Installing update for ${packageName}...`);
+                const success = await updateManager.updatePackage(packageName);
+                if (success) {
+                    return `✓ Successfully updated ${packageName}`;
+                }
+                else {
+                    return `✗ Failed to update ${packageName}`;
+                }
+            }
+        }
+        catch (error) {
+            return `✗ Installation failed: ${error instanceof Error ? error.message : String(error)}`;
+        }
+    },
+    update_config: async (args, isSudo, inBackground, process) => {
+        try {
+            const { updateManager } = await import('./core/updater.js');
+            if (args.length === 0) {
+                // Show current configuration
+                const config = updateManager.getConfig();
+                let output = 'Update Configuration:\n\n';
+                output += `  enabled: ${config.enabled}\n`;
+                output += `  checkOnBoot: ${config.checkOnBoot}\n`;
+                output += `  autoUpdate: ${config.autoUpdate}\n`;
+                output += `  checkInterval: ${config.checkInterval} hours\n`;
+                output += `  lastCheck: ${config.lastCheck || 'never'}\n`;
+                output += `  updateChannels: ${config.updateChannels.length} configured\n`;
+                output += '\nTo change settings: update_config KEY=VALUE';
+                return output;
+            }
+            else {
+                // Set configuration
+                const setting = args[0];
+                const [key, value] = setting.split('=');
+                if (!key || value === undefined) {
+                    return 'Invalid format. Use: KEY=VALUE';
+                }
+                const newConfig = {};
+                // Parse value based on key
+                switch (key) {
+                    case 'enabled':
+                    case 'checkOnBoot':
+                    case 'autoUpdate':
+                        newConfig[key] = value.toLowerCase() === 'true';
+                        break;
+                    case 'checkInterval':
+                        const interval = parseInt(value, 10);
+                        if (isNaN(interval) || interval < 1) {
+                            return 'checkInterval must be a positive number';
+                        }
+                        newConfig[key] = interval;
+                        break;
+                    default:
+                        return `Unknown configuration key: ${key}`;
+                }
+                updateManager.updateConfig(newConfig);
+                return `✓ Updated ${key} = ${newConfig[key]}`;
+            }
+        }
+        catch (error) {
+            return `✗ Configuration error: ${error instanceof Error ? error.message : String(error)}`;
+        }
+    },
+    update: async (args, isSudo, inBackground, process) => {
+        const command = args[0];
+        switch (command) {
+            case 'check':
+                return await builtInCommands.update_check(args.slice(1), isSudo, inBackground, process);
+            case 'install':
+                return await builtInCommands.update_install(args.slice(1), isSudo, inBackground, process);
+            case 'config':
+                return await builtInCommands.update_config(args.slice(1), isSudo, inBackground, process);
+            case 'setup':
+                try {
+                    const { updateManager } = await import('./core/updater.js');
+                    // Configure default settings
+                    const defaultConfig = {
+                        enabled: true,
+                        checkOnBoot: true,
+                        autoUpdate: false,
+                        checkInterval: 24
+                    };
+                    updateManager.updateConfig(defaultConfig);
+                    // Add default update channels
+                    updateManager.addUpdateChannel('https://raw.githubusercontent.com/NaveenSingh9999/LonxOS-Web/refs/heads/main/repo/index.json');
+                    let output = 'Update system configured successfully!\n\n';
+                    output += 'Available commands:\n';
+                    output += '  update check      - Check for updates\n';
+                    output += '  update install    - Install all updates\n';
+                    output += '  update config     - View/modify configuration\n\n';
+                    output += 'The system will now check for updates on boot.\n';
+                    output += 'To enable automatic updates: update config autoUpdate=true';
+                    return output;
+                }
+                catch (error) {
+                    return `✗ Setup failed: ${error instanceof Error ? error.message : String(error)}`;
+                }
+            default:
+                return 'Usage: update [check|install|config|setup]';
+        }
     }
 };
 export async function handleShellInput(e) {
