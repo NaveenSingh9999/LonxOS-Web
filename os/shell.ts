@@ -309,7 +309,7 @@ function parseCommand(input: string): { command: string; args: string[]; isSudo:
 
 
 builtInCommands = {
-    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, kill, jobs, bg, fg, sleep, spin, cd, pwd, adt, sudo, thread_test',
+    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, kill, jobs, bg, fg, sleep, spin, cd, pwd, adt, sudo, thread_test, run',
     echo: (args) => args.join(' '),
     memstat: () => {
         const stats = memoryController;
@@ -339,6 +339,9 @@ builtInCommands = {
                 const item = read(itemPath);
                 if (typeof item === 'object' && item !== null) {
                     return `<span style="color: #87CEFA;">${key}/</span>`; // Blue for directories
+                }
+                if (key.endsWith('.rn')) {
+                    return `<span style="color: #f975d4;">${key}</span>`; // Pink for executables
                 }
                 return key;
             }).join('\n');
