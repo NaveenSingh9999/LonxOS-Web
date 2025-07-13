@@ -47,7 +47,7 @@ async function installPackage(pkgName: string) {
 
                 const codeRes = await tryFetch(packageUrl); // Use it again for the package
                 const code = await codeRes.text();
-                write(`/bin/${pkgName}`, code);
+                write(`/bin/${pkgName}.js`, code); // Append .js to the filename
                 shellPrint(`[mim] Installed: ${pkgName} v${target.version}`);
                 return;
             }
@@ -60,14 +60,17 @@ async function installPackage(pkgName: string) {
 
 function removePackage(pkgName: string) {
     // This is a simplified remove, a real one would need to check dependencies etc.
-    write(`/bin/${pkgName}`, ''); // Effectively deletes the file by making it empty
+    write(`/bin/${pkgName}.js`, ''); // Effectively deletes the file by making it empty
     shellPrint(`[mim] Removed package: ${pkgName}`);
 }
 
 function listPackages(): string {
     const binContent = read('/bin');
     if (typeof binContent === 'object' && binContent !== null) {
-        return Object.keys(binContent).filter(k => (binContent as any)[k].length > 0).join('\n');
+        return Object.keys(binContent)
+            .filter(k => (binContent as any)[k].length > 0)
+            .map(k => k.replace('.js', '')) // Remove .js extension for display
+            .join('\n');
     }
     return 'No packages installed.';
 }
