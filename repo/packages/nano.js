@@ -113,9 +113,20 @@ function createEditorInterface() {
             overflow: auto;
             caret-color: #ffffff;
             cursor: text;
+            -webkit-user-select: text;
+            -moz-user-select: text;
+            -ms-user-select: text;
+            user-select: text;
         }
         
         #nano-editor:focus {
+            outline: none;
+            background: #1e1e1e;
+            color: #ffffff;
+            border: 1px solid #0066cc;
+        }
+        
+        #nano-editor:active {
             outline: none;
             background: #1e1e1e;
             color: #ffffff;
@@ -263,13 +274,7 @@ function showEditor() {
     const container = document.getElementById('nano-editor-container');
     container.style.display = 'flex';
     
-    // Focus the editor and ensure it captures input
-    setTimeout(() => {
-        editorState.editorEl.focus();
-        editorState.editorEl.click(); // Ensure focus
-    }, 50);
-    
-    // Set up event listeners
+    // Set up event listeners first
     editorState.editorEl.addEventListener('input', handleInput);
     editorState.editorEl.addEventListener('keydown', handleEditorKeys);
     editorState.editorEl.addEventListener('scroll', handleScroll);
@@ -278,6 +283,21 @@ function showEditor() {
     
     // Prevent document from capturing keypresses
     document.addEventListener('keydown', preventDocumentKeys, true);
+    document.addEventListener('keypress', preventDocumentKeys, true);
+    document.addEventListener('keyup', preventDocumentKeys, true);
+    
+    // Focus the editor and ensure it captures input
+    setTimeout(() => {
+        editorState.editorEl.focus();
+        editorState.editorEl.click(); // Ensure focus
+        
+        // Double-check focus after a bit more time
+        setTimeout(() => {
+            if (document.activeElement !== editorState.editorEl) {
+                editorState.editorEl.focus();
+            }
+        }, 100);
+    }, 50);
 }
 
 function hideEditor() {
@@ -296,6 +316,8 @@ function hideEditor() {
     
     // Re-enable document key capture
     document.removeEventListener('keydown', preventDocumentKeys, true);
+    document.removeEventListener('keypress', preventDocumentKeys, true);
+    document.removeEventListener('keyup', preventDocumentKeys, true);
     
     // Return control to shell
     editorState.lonx_api.shell.setInputMode('shell');
@@ -381,6 +403,12 @@ function preventDocumentKeys(e) {
     // Prevent document from capturing any keys while editor is open
     if (document.getElementById('nano-editor-container').style.display === 'flex') {
         e.stopPropagation();
+        e.stopImmediatePropagation();
+        
+        // Allow only editor-specific keys to pass through
+        if (e.target !== editorState.editorEl) {
+            e.preventDefault();
+        }
     }
 }
 

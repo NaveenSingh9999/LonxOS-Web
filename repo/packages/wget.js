@@ -59,23 +59,30 @@ class WgetDownloader {
     }
 
     /**
-     * Show download progress
+     * Show download progress with Linux-style progress bar
      */
     showProgress(downloaded, total, filename) {
         // Ensure all values are valid numbers
-        const safeDownloaded = Math.max(0, downloaded || 0);
-        const safeTotal = Math.max(0, total || 0);
+        const safeDownloaded = Math.max(0, Number(downloaded) || 0);
+        const safeTotal = Math.max(0, Number(total) || 0);
         
         const percent = safeTotal > 0 ? Math.min(100, Math.max(0, Math.round((safeDownloaded / safeTotal) * 100))) : 0;
         const downloadedFormatted = this.formatFileSize(safeDownloaded);
         const totalFormatted = safeTotal > 0 ? this.formatFileSize(safeTotal) : 'Unknown';
         
-        // Ensure progress bar values are non-negative and within bounds
-        const progressLength = Math.max(0, Math.min(50, Math.floor(percent / 2)));
-        const remainingLength = Math.max(0, 50 - progressLength);
-        const progressBar = '='.repeat(progressLength) + ' '.repeat(remainingLength);
+        // Create Linux-style progress bar [####      ] 
+        const barWidth = 20;
+        const filledBars = Math.floor((percent / 100) * barWidth);
+        const emptyBars = barWidth - filledBars;
         
-        this.shell.updateLine(`Downloading ${filename}: [${progressBar}] ${percent}% (${downloadedFormatted}/${totalFormatted})`);
+        // Ensure we don't have negative values
+        const safeFilled = Math.max(0, filledBars);
+        const safeEmpty = Math.max(0, emptyBars);
+        
+        const progressBar = '[' + '#'.repeat(safeFilled) + ' '.repeat(safeEmpty) + ']';
+        
+        // Use print instead of updateLine to avoid issues
+        this.shell.print(`\r${filename}: ${progressBar} ${percent}% (${downloadedFormatted}/${totalFormatted})`);
     }
 
     /**
@@ -125,30 +132,17 @@ class WgetDownloader {
             let content;
 
             if (isTextFile) {
-                // For text files, we can track progress by reading the stream
-                const reader = response.body.getReader();
-                const decoder = new TextDecoder();
-                let result = '';
-
-                while (true) {
-                    const { done, value } = await reader.read();
-                    
-                    if (done) break;
-                    
-                    if (value) {
-                        downloadedSize += value.length;
-                        result += decoder.decode(value, { stream: true });
-                        
-                        if (totalSize > 0) {
-                            this.showProgress(downloadedSize, totalSize, filename);
-                        }
-                    }
-                    
-                    // Small delay to show progress
-                    await new Promise(resolve => setTimeout(resolve, 10));
-                }
+                // For text files, get the full text at once to avoid streaming issues
+                this.shell.print('Downloading text file...');
+                content = await response.text();
+                downloadedSize = content.length;
                 
-                content = result;
+                // Show completion
+                if (totalSize > 0) {
+                    this.showProgress(downloadedSize, totalSize, filename);
+                } else {
+                    this.shell.print(`Download complete: ${this.formatFileSize(downloadedSize)}`);
+                }
                 
             } else {
                 // For binary files, we'll get the array buffer
@@ -161,9 +155,11 @@ class WgetDownloader {
                 const binary = Array.from(bytes, byte => String.fromCharCode(byte)).join('');
                 content = `data:${contentType};base64,${btoa(binary)}`;
                 
-                // Show final progress
-                if (downloadedSize > 0) {
-                    this.showProgress(downloadedSize, totalSize || downloadedSize, filename);
+                // Show completion
+                if (totalSize > 0) {
+                    this.showProgress(downloadedSize, totalSize, filename);
+                } else {
+                    this.shell.print(`Download complete: ${this.formatFileSize(downloadedSize)}`);
                 }
             }
 
