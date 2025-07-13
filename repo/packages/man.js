@@ -1,8 +1,28 @@
 // packages/man.js
-export default function main(args, lonx) {
+
+// The shell will execute this script. It expects a function called 'main'.
+async function main(args, lonx) {
     const { shell } = lonx;
 
     const manuals = {
+        'rm': `NAME
+    rm - remove files or directories
+
+SYNOPSIS
+    rm [file]
+
+DESCRIPTION
+    Deletes the specified file or directory.
+    Use 'sudo rm /' to attempt to remove the root directory.`,
+        'sudo': `NAME
+    sudo - execute a command as superuser
+
+SYNOPSIS
+    sudo [command]
+
+DESCRIPTION
+    Runs a command with elevated privileges. This is a simplified version
+    and does not require a password. It allows certain protected operations.`,
         'mim': `NAME
     mim - The Lonx package manager.
 
@@ -58,3 +78,6 @@ DESCRIPTION
         shell.print(`No manual entry for ${command}`);
     }
 }
+
+// The shell will find and run this main function.
+main(args, lonx_api);

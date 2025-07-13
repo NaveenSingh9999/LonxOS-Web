@@ -66,6 +66,37 @@ function resolvePath(path) {
     return '/' + newPath.join('/');
 }
 let isSudo = false; // Global flag for sudo access
+// Forward declaration of builtInCommands
+let builtInCommands;
+const lonx_api = {
+    shell: {
+        print: shellPrint,
+        updateLine: shellUpdateLine,
+        setInputMode: setInputMode,
+        resolvePath: resolvePath,
+    },
+    fs: {
+        read: read,
+        write: write,
+        remove: remove,
+    },
+    net: {
+        tryFetch: net.tryFetch,
+        ping: net.ping,
+    }
+};
+function renderShell() {
+    // Don't render the prompt if not in shell mode
+    if (inputMode !== 'shell')
+        return;
+    // Clear any existing cursor before adding a new one
+    const cursorSpan = bootScreen.querySelector('.cursor');
+    if (cursorSpan)
+        cursorSpan.remove();
+    const promptPath = currentWorkingDirectory.replace('/home/user', '~');
+    bootScreen.innerHTML += `\n<span style="color: #50fa7b;">user@lonx</span>:<span style="color: #87CEFA;">${promptPath}</span>$ ${currentLine}<span class="cursor"> </span>`;
+    bootScreen.scrollTop = bootScreen.scrollHeight;
+}
 function executeCommand(command, args) {
     return __awaiter(this, void 0, void 0, function* () {
         if (command in builtInCommands) {
@@ -94,7 +125,12 @@ function executeCommand(command, args) {
                     yield executable(args, lonx_api, isSudo);
                 }
                 catch (e) {
-                    shellPrint(`Error executing ${command}: ${e.message}`);
+                    if (e.message.includes("export")) {
+                        shellPrint(`Error executing ${command}: This module may be in an old format. Try updating it with 'mim install ${command}'.`);
+                    }
+                    else {
+                        shellPrint(`Error executing ${command}: ${e.message}`);
+                    }
                 }
             }
             else {
@@ -103,7 +139,7 @@ function executeCommand(command, args) {
         }
     });
 }
-const builtInCommands = {
+builtInCommands = {
     help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, cd, adt, sudo',
     echo: (args) => args.join(' '),
     memstat: () => {
@@ -214,35 +250,6 @@ const builtInCommands = {
         isSudo = false; // Reset after command execution
     })
 };
-const lonx_api = {
-    shell: {
-        print: shellPrint,
-        updateLine: shellUpdateLine,
-        setInputMode: setInputMode,
-        resolvePath: resolvePath,
-    },
-    fs: {
-        read: read,
-        write: write,
-        remove: remove,
-    },
-    net: {
-        tryFetch: net.tryFetch, // Expose the new function
-        ping: net.ping,
-    }
-};
-function renderShell() {
-    // Don't render the prompt if not in shell mode
-    if (inputMode !== 'shell')
-        return;
-    // Clear any existing cursor before adding a new one
-    const cursorSpan = bootScreen.querySelector('.cursor');
-    if (cursorSpan)
-        cursorSpan.remove();
-    const promptPath = currentWorkingDirectory.replace('/home/user', '~');
-    bootScreen.innerHTML += `\n<span style="color: #50fa7b;">user@lonx</span>:<span style="color: #87CEFA;">${promptPath}</span>$ ${currentLine}<span class="cursor"> </span>`;
-    bootScreen.scrollTop = bootScreen.scrollHeight;
-}
 function handleShellInput(e) {
     return __awaiter(this, void 0, void 0, function* () {
         if (inputMode === 'editor' && editorKeyHandler) {
