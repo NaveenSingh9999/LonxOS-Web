@@ -2,7 +2,7 @@
 import { read, write } from './fs.js';
 import { shellPrint } from './shell.js';
 import { tryFetch } from './core/net.js';
-const defaultRepo = 'https://naveensingh9999.github.io/standard-module-lib-lonxos/index.json';
+const defaultRepo = 'https://raw.githubusercontent.com/NaveenSingh9999/LonxOS-Web/refs/heads/main/repo/index.json';
 function getRepos() {
     const sources = read('/etc/mim/sources.list');
     if (typeof sources === 'string') {
