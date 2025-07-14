@@ -23,7 +23,7 @@ export class UpdateManager {
             enabled: true,
             checkOnBoot: true,
             updateChannels: [
-                'https://naveensingh9999.github.io/standard-module-lib-lonxos/index.json',
+                'https://naveensingh9999.github.io/LonxOS-Web/repo/index.json',
                 'https://lonx-updates.vercel.app/index.json' // Fallback channel
             ],
             lastCheck: '',

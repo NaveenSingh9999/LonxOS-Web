@@ -10,7 +10,7 @@ export const SHELL_STYLE_OPTIONS = ['bash', 'zsh', 'friendly'];
 export const DEFAULT_SHELL_STYLE = 'bash';
 
 export const DEFAULT_PACKAGE_REPOS = [
-  'https://naveensingh9999.github.io/standard-module-lib-lonxos/index.json'
+  'https://naveensingh9999.github.io/LonxOS-Web/repo/index.json'
 ];
 
 export const DEFAULT_CONFIG = {

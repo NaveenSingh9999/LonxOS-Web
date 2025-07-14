@@ -78,7 +78,7 @@ The update system is configured via `/etc/lonx/update.conf`:
   "autoUpdate": false,
   "checkInterval": 24,
   "updateChannels": [
-    "https://naveensingh9999.github.io/standard-module-lib-lonxos/index.json"
+    "https://naveensingh9999.github.io/LonxOS-Web/repo/index.json"
   ],
   "lastCheck": "2025-07-13T00:00:00Z"
 }

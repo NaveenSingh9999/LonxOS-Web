@@ -28,7 +28,7 @@ async function main(args, lonx) {
         
         // Add default update channels
         const channels = [
-            'https://naveensingh9999.github.io/standard-module-lib-lonxos/index.json'
+            'https://naveensingh9999.github.io/LonxOS-Web/repo/index.json'
         ];
         
         for (const channel of channels) {

@@ -3,7 +3,7 @@ import { read, write } from './fs.js';
 import { shellPrint } from './shell.js';
 import { tryFetch } from './core/net.js';
 
-const defaultRepo = 'https://cdn.jsdelivr.net/gh/NaveenSingh9999/LonxOS-Web/repo/index.json';
+const defaultRepo = 'https://naveensingh9999.github.io/LonxOS-Web/repo/index.json';
 
 // In-memory cache for repo data
 const repoCache = new Map();
