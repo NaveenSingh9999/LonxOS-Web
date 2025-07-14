@@ -32,6 +32,14 @@
     "lastUpdated": "2025-07-13T00:00:00Z"
   },
   {
+    "name": "lonfetch",
+    "desc": "System information display with LonxOS ASCII art",
+    "version": "1.0.0",
+    "url": "packages/lonfetch.js",
+    "checksum": "sha256:lonfetch-v1.0.0",
+    "lastUpdated": "2025-07-13T00:00:00Z"
+  },
+  {
     "name": "man",
     "desc": "Manual page viewer for commands",
     "version": "1.1.0",
