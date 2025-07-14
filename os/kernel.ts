@@ -8,6 +8,7 @@ import { initHardware, getHardwareInfo } from './core/hardware.js';
 import { ptm } from './core/ptm.js';
 import { updateManager } from './core/updater.js';
 import { updateService } from './core/update-service.js';
+import { initMim } from './mim.js';
 
 let kernelState = 'HALTED';
 
@@ -56,6 +57,13 @@ export async function boot() {
     
     shellPrint('Welcome to Lonx OS!');
     shellPrint(`Hardware: ${getHardwareInfo().cpu.cores} Cores @ ${getHardwareInfo().cpu.speed.toFixed(2)}GHz, ${memoryController.getTotal()}MB RAM`);
+    
+    // Initialize MIM package manager
+    try {
+        await initMim();
+    } catch (error) {
+        console.warn('[BOOT] MIM initialization failed:', error);
+    }
     
     // Check for updates if configured
     if (updateManager.shouldCheckForUpdates()) {

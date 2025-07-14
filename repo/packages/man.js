@@ -110,41 +110,54 @@ SYNOPSIS
 DESCRIPTION
     mim (Maybe It's Magic) is the package manager for Lonx OS. It allows you to
     install, remove, and manage software packages from local and remote repositories.
+    MIM features dynamic runtime repository indexing for instant access to new packages.
 
 COMMANDS
     install <package>       Install a package from repositories
     remove <package>        Remove an installed package
     list                    List all installed packages
-    search <term>           Search for packages (if supported)
-    sources                 Show configured repository sources
-    addrepo <url>           Add a new package repository
-    delrepo <url>           Remove a package repository
-    update                  Update package repository indexes
-    upgrade                 Upgrade all installed packages
-    info <package>          Show detailed package information
+    search <term>           Search for packages by name or description
+    sources                 Show configured repository sources and their status
+    addrepo <url>           Add and immediately index a new package repository
+    delrepo <url>           Remove a package repository and its cache
+    refresh                 Refresh all repository indexes
+    repo-info [url]         Show detailed repository information
+    verify                  Verify repository connectivity and validity
+    help                    Show this help message
 
 EXAMPLES
     mim install wget        Install the wget package
     mim remove nano         Remove the nano package
     mim list                Show all installed packages
+    mim search editor       Search for editor packages
     mim addrepo https://example.com/repo/index.json
-                           Add a custom repository
-    mim sources             Show all configured repositories
+                           Add and index a custom repository
+    mim sources             Show all configured repositories with status
+    mim refresh             Update all repository caches
+    mim verify              Check if all repositories are accessible
 
 REPOSITORY FORMAT
     Repositories are JSON files containing package metadata:
     [
       {
         "name": "package-name",
-        "desc": "Package description",
+        "description": "Package description",
         "version": "1.0.0",
         "url": "packages/package.js"
       }
     ]
 
 FILES
-    /etc/mim/sources.list   Repository configuration
-    /bin/                   Installed package location
+    /etc/mim/sources.list           Repository configuration
+    /etc/mim/cache/                 Repository index cache
+    /var/lib/mim/installed/         Installed package metadata
+    /bin/                           Installed package location
+
+NOTES
+    - Repositories are fetched and cached immediately when added with 'addrepo'
+    - Package installation searches all cached repositories for instant results
+    - Use 'refresh' to update repository caches manually
+    - Repository caches are stored locally for offline access
 
 AUTHOR
     Lonx OS development team`,
