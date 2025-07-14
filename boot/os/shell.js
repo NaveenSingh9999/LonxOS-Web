@@ -1,5 +1,5 @@
 // os/shell.ts
-import { read, write, remove } from './fs.js';
+import { read, write, remove, list, exists, isDirectory, mkdir, getSettings, updateSettings, getDefaultApp, setDefaultApp } from './fs.js';
 import { mim } from './mim.js';
 import * as net from './core/net.js';
 import { ptm } from './core/ptm.js';
@@ -327,7 +327,7 @@ function parseCommand(input) {
     return pipeline;
 }
 builtInCommands = {
-    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, kill, jobs, bg, fg, sleep, spin, cd, pwd, adt, sudo, thread_test, run',
+    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, kill, jobs, bg, fg, sleep, spin, cd, pwd, adt, sudo, thread_test, run, open, xdg-open, xdg-mime, settings, mkdir',
     echo: (args) => args.join(' '),
     memstat: () => {
         const stats = memoryController;
@@ -559,6 +559,177 @@ builtInCommands = {
     mim: (args, isSudo, inBackground, process) => mim(args),
     sudo: async (args, isSudo, inBackground) => {
         // This is now handled by the parser
+    },
+    
+    // New filesystem hierarchy commands
+    mkdir: (args) => {
+        const path = args[0];
+        if (!path) return 'mkdir: missing operand';
+        
+        const resolved = resolvePath(path);
+        if (exists(resolved)) {
+            return `mkdir: cannot create directory '${resolved}': File exists`;
+        }
+        
+        const success = mkdir(resolved);
+        return success ? '' : `mkdir: cannot create directory '${resolved}'`;
+    },
+    
+    // Default app system commands
+    open: async (args) => {
+        const filePath = args[0];
+        if (!filePath) return 'open: missing file operand';
+        
+        const resolved = resolvePath(filePath);
+        if (!exists(resolved)) {
+            return `open: cannot access '${resolved}': No such file or directory`;
+        }
+        
+        if (isDirectory(resolved)) {
+            return `open: '${resolved}': Is a directory`;
+        }
+        
+        // Get file extension
+        const extension = filePath.includes('.') ? '.' + filePath.split('.').pop() : '';
+        const defaultApp = getDefaultApp(extension);
+        
+        if (!defaultApp) {
+            return `open: no default application found for extension '${extension}'`;
+        }
+        
+        // Execute the default app with the file as argument
+        const command = `${defaultApp} ${resolved}`;
+        shellPrint(`[open] Launching: ${command}`);
+        
+        try {
+            await executeCommand(command, false);
+            return '';
+        } catch (error) {
+            return `open: failed to launch '${defaultApp}': ${error.message}`;
+        }
+    },
+    
+    'xdg-open': async (args) => {
+        // Alias to open command for Linux compatibility
+        return await builtInCommands.open(args);
+    },
+    
+    'xdg-mime': (args) => {
+        const action = args[0];
+        const mimeType = args[1];
+        const app = args[2];
+        
+        if (action === 'default') {
+            if (!mimeType || !app) {
+                return 'xdg-mime: Usage: xdg-mime default <app> <extension>';
+            }
+            
+            // Convert mimetype to extension if needed
+            let extension = mimeType;
+            if (!extension.startsWith('.')) {
+                // Simple mapping for common types
+                const mimeToExt = {
+                    'text/plain': '.txt',
+                    'application/json': '.json',
+                    'text/markdown': '.md',
+                    'application/javascript': '.js'
+                };
+                extension = mimeToExt[mimeType] || `.${mimeType.split('/')[1]}`;
+            }
+            
+            const success = setDefaultApp(extension, app);
+            return success ? `Set default app for ${extension} to ${app}` : 'xdg-mime: failed to set default app';
+        } else if (action === 'query') {
+            if (!mimeType) {
+                return 'xdg-mime: Usage: xdg-mime query default <extension>';
+            }
+            
+            let extension = mimeType;
+            if (!extension.startsWith('.')) {
+                extension = `.${extension}`;
+            }
+            
+            const app = getDefaultApp(extension);
+            return app || `No default app set for ${extension}`;
+        } else {
+            return 'xdg-mime: Usage: xdg-mime {default|query} ...';
+        }
+    },
+    
+    // Settings management commands
+    settings: (args) => {
+        const action = args[0];
+        const key = args[1];
+        const value = args[2];
+        
+        if (action === 'get') {
+            if (!key) {
+                // Show all settings
+                const settings = getSettings();
+                return settings ? JSON.stringify(settings, null, 2) : 'No settings found';
+            } else {
+                // Get specific setting
+                const settings = getSettings();
+                if (!settings) return 'No settings found';
+                
+                const keys = key.split('.');
+                let current = settings;
+                for (const k of keys) {
+                    if (current[k] === undefined) {
+                        return `Setting '${key}' not found`;
+                    }
+                    current = current[k];
+                }
+                return typeof current === 'object' ? JSON.stringify(current, null, 2) : String(current);
+            }
+        } else if (action === 'set') {
+            if (!key || value === undefined) {
+                return 'settings: Usage: settings set <key> <value>';
+            }
+            
+            const settings = getSettings();
+            if (!settings) return 'No settings found';
+            
+            const keys = key.split('.');
+            let current = settings;
+            
+            // Navigate to the parent of the target key
+            for (let i = 0; i < keys.length - 1; i++) {
+                if (!current[keys[i]]) current[keys[i]] = {};
+                current = current[keys[i]];
+            }
+            
+            // Set the value, try to parse as JSON first
+            try {
+                current[keys[keys.length - 1]] = JSON.parse(value);
+            } catch {
+                current[keys[keys.length - 1]] = value;
+            }
+            
+            const success = updateSettings(settings);
+            return success ? `Set ${key} = ${value}` : 'Failed to update settings';
+        } else if (action === 'list') {
+            const settings = getSettings();
+            if (!settings) return 'No settings found';
+            
+            const listKeys = (obj, prefix = '') => {
+                let result = [];
+                for (const [k, v] of Object.entries(obj)) {
+                    const fullKey = prefix ? `${prefix}.${k}` : k;
+                    if (typeof v === 'object' && v !== null && !Array.isArray(v)) {
+                        result.push(`${fullKey}/`);
+                        result = result.concat(listKeys(v, fullKey));
+                    } else {
+                        result.push(`${fullKey} = ${JSON.stringify(v)}`);
+                    }
+                }
+                return result;
+            };
+            
+            return listKeys(settings).join('\n');
+        } else {
+            return 'settings: Usage: settings {get|set|list} [key] [value]';
+        }
     }
 };
 export async function handleShellInput(e) {

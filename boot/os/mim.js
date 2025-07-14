@@ -39,8 +39,13 @@ async function installPackage(pkgName) {
                 const packageUrl = new URL(target.url, baseUrl).href;
                 const codeRes = await tryFetch(packageUrl); // Use it again for the package
                 const code = await codeRes.text();
+                
+                // Install to /bin for executables, save copy to Downloads
                 write(`/bin/${pkgName}.js`, code); // Append .js to the filename
+                write(`/home/user/Downloads/${pkgName}-${target.version}.js`, code); // Backup copy
+                
                 shellPrint(`[mim] Installed: ${pkgName} v${target.version}`);
+                shellPrint(`[mim] Backup saved to ~/Downloads/${pkgName}-${target.version}.js`);
                 return;
             }
         }

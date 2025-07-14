@@ -1,5 +1,5 @@
 // os/shell.ts
-import { read, write, remove } from './fs.js';
+import { read, write, remove, list, exists, isDirectory, mkdir, getSettings, updateSettings, getDefaultApp, setDefaultApp } from './fs.js';
 import { mim } from './mim.js';
 import * as net from './core/net.js';
 import { ptm, Process } from './core/ptm.js';
