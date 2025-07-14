@@ -327,7 +327,56 @@ function parseCommand(input) {
     return pipeline;
 }
 builtInCommands = {
-    help: () => 'Available Commands: echo, whoami, memstat, clear, reboot, ls, cat, touch, rm, mim, ps, kill, jobs, bg, fg, sleep, spin, cd, pwd, adt, sudo, thread_test, run, open, xdg-open, xdg-mime, settings, mkdir',
+    help: () => {
+        return `Available Commands:
+
+Core Commands:
+  echo <text>               - Print text to console
+  whoami                    - Show current user
+  memstat                   - Display memory statistics
+  clear                     - Clear the screen
+  reboot                    - Restart the system
+  
+File Operations:
+  ls [path]                 - List directory contents
+  cat <file>                - Display file contents
+  touch <file>              - Create empty file
+  rm <file>                 - Remove file
+  mkdir <path>              - Create directories
+  cd <path>                 - Change directory
+  pwd                       - Show current directory
+
+File Associations:
+  open <file>               - Opens file with default app
+  xdg-open <file>           - Linux-compatible alias for open
+  xdg-mime default <app> <ext> - Set default app for extension
+  xdg-mime query default <ext> - Query default app for extension
+
+System Management:
+  settings get [key]        - Get system settings
+  settings set <key> <value> - Set system settings
+  settings list             - List all settings
+  
+Process Management:
+  ps                        - List running processes
+  kill <pid>                - Kill process by ID
+  jobs                      - List background jobs
+  bg <job>                  - Move job to background
+  fg <job>                  - Move job to foreground
+  
+Network & Packages:
+  mim <command>             - Package manager
+  adt <url>                 - Test network connectivity
+  
+Advanced:
+  run <script>              - Execute script files
+  sudo <command>            - Run with elevated privileges
+  thread_test               - Test threading capabilities
+  sleep <seconds>           - Wait for specified time
+  spin <seconds>            - CPU intensive test
+
+Type 'help <command>' for detailed help on specific commands.`;
+    },
     echo: (args) => args.join(' '),
     memstat: () => {
         const stats = memoryController;
