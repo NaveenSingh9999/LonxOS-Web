@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LonxOS Window Manager v1.0 Test</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .test-controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+            z-index: 10000;
+        }
+
+        .test-controls h3 {
+            margin: 0 0 15px 0;
+            color: #333;
+        }
+
+        .test-controls button {
+            display: block;
+            width: 100%;
+            margin: 8px 0;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 6px;
+            background: #007AFF;
+            color: white;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .test-controls button:hover {
+            background: #0056CC;
+            transform: translateY(-1px);
+        }
+
+        .test-controls button.danger {
+            background: #FF3B30;
+        }
+
+        .test-controls button.danger:hover {
+            background: #D70015;
+        }
+
+        .test-controls button.success {
+            background: #34C759;
+        }
+
+        .test-controls button.success:hover {
+            background: #28A745;
+        }
+
+        .info {
+            margin-top: 15px;
+            padding: 10px;
+            background: rgba(0, 122, 255, 0.1);
+            border-radius: 6px;
+            font-size: 12px;
+            color: #0066CC;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-controls">
+        <h3>🚀 LonxOS WM v1.0 Test</h3>
+        
+        <button onclick="createTestWindow()">Create Test Window</button>
+        <button onclick="createCalculator()">🧮 Calculator</button>
+        <button onclick="createNotepad()">📝 Notepad</button>
+        <button onclick="createAbout()">ℹ️ About LonxOS</button>
+        
+        <hr style="margin: 15px 0; border: none; height: 1px; background: #ddd;">
+        
+        <button onclick="testFullscreen()" class="success">🔲 Test Fullscreen</button>
+        <button onclick="showDesktop()" class="success">🏠 Show Desktop</button>
+        <button onclick="listWindows()">📋 List Windows</button>
+        
+        <hr style="margin: 15px 0; border: none; height: 1px; background: #ddd;">
+        
+        <button onclick="closeAllWindows()" class="danger">❌ Close All</button>
+        
+        <div class="info">
+            <strong>Keyboard Shortcuts:</strong><br>
+            • Ctrl+Shift+F: Fullscreen<br>
+            • Alt+Tab: Switch Windows<br>
+            • Ctrl+W: Close Window<br>
+            • Win+D: Show Desktop<br>
+            • Alt+F4: Close Window
+        </div>
+    </div>
+
+    <!-- Load the window manager modules -->
+    <script type="module">
+        // Import the window manager and GUI API
+        import { initWindowManager } from './os/lwm.js';
+        import { LonxGUI } from './os/gui.js';
+
+        // Initialize the window manager
+        const wm = initWindowManager();
+        
+        // Initialize GUI API
+        const gui = new LonxGUI(wm);
+        
+        // Expose to global scope for testing
+        window.lonx = { gui, wm };
+        window.gui = gui;
+        window.wm = wm;
+
+        // Test functions
+        window.createTestWindow = () => {
+            const id = gui.createWindow({
+                title: `Test Window ${Date.now()}`,
+                icon: '🪟',
+                content: `
+                    <div style="padding: 40px; text-align: center;">
+                        <h2 style="color: #007AFF;">🚀 LonxOS Test Window</h2>
+                        <p>This is a test window with smooth animations!</p>
+                        <p><strong>Try these actions:</strong></p>
+                        <ul style="text-align: left; max-width: 300px; margin: 20px auto;">
+                            <li>🔲 Click fullscreen button</li>
+                            <li>🖱️ Drag the window around</li>
+                            <li>📏 Resize from bottom-right corner</li>
+                            <li>➖ Minimize the window</li>
+                            <li>🔲 Maximize the window</li>
+                            <li>❌ Close the window</li>
+                        </ul>
+                        <p style="font-size: 12px; color: #666; margin-top: 30px;">
+                            Created at: ${new Date().toLocaleTimeString()}
+                        </p>
+                    </div>
+                `,
+                width: 500,
+                height: 400
+            });
+            console.log('Created test window:', id);
+        };
+
+        window.createCalculator = () => {
+            // This will use the calculator from the shell commands
+            if (window.lonx?.gui) {
+                const calcId = window.lonx.gui.createWindow({
+                    title: '🧮 Calculator',
+                    icon: '🧮',
+                    content: `
+                        <div style="padding: 20px; text-align: center; background: #f0f0f0;">
+                            <div style="background: #000; color: #0f0; padding: 10px; margin-bottom: 20px; font-family: monospace; font-size: 24px; border-radius: 4px;" id="calc-display">0</div>
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-width: 300px; margin: 0 auto;">
+                                <button onclick="clearCalc()" style="grid-column: span 2; padding: 15px; font-size: 18px; border: none; background: #ff6b6b; color: white; border-radius: 4px; cursor: pointer;">Clear</button>
+                                <button onclick="appendToCalc('/')" style="padding: 15px; font-size: 18px; border: none; background: #4ecdc4; color: white; border-radius: 4px; cursor: pointer;">÷</button>
+                                <button onclick="appendToCalc('*')" style="padding: 15px; font-size: 18px; border: none; background: #4ecdc4; color: white; border-radius: 4px; cursor: pointer;">×</button>
+                                
+                                <button onclick="appendToCalc('7')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">7</button>
+                                <button onclick="appendToCalc('8')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">8</button>
+                                <button onclick="appendToCalc('9')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">9</button>
+                                <button onclick="appendToCalc('-')" style="padding: 15px; font-size: 18px; border: none; background: #4ecdc4; color: white; border-radius: 4px; cursor: pointer;">−</button>
+                                
+                                <button onclick="appendToCalc('4')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">4</button>
+                                <button onclick="appendToCalc('5')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">5</button>
+                                <button onclick="appendToCalc('6')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">6</button>
+                                <button onclick="appendToCalc('+')" style="padding: 15px; font-size: 18px; border: none; background: #4ecdc4; color: white; border-radius: 4px; cursor: pointer;">+</button>
+                                
+                                <button onclick="appendToCalc('1')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">1</button>
+                                <button onclick="appendToCalc('2')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">2</button>
+                                <button onclick="appendToCalc('3')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">3</button>
+                                <button onclick="calculate()" style="grid-row: span 2; padding: 15px; font-size: 18px; border: none; background: #007AFF; color: white; border-radius: 4px; cursor: pointer;">=</button>
+                                
+                                <button onclick="appendToCalc('0')" style="grid-column: span 2; padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">0</button>
+                                <button onclick="appendToCalc('.')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">.</button>
+                            </div>
+                        </div>
+                        <script>
+                            let calcValue = '0';
+                            
+                            function updateDisplay() {
+                                document.getElementById('calc-display').textContent = calcValue;
+                            }
+                            
+                            function clearCalc() {
+                                calcValue = '0';
+                                updateDisplay();
+                            }
+                            
+                            function appendToCalc(val) {
+                                if (calcValue === '0' && val !== '.') {
+                                    calcValue = val;
+                                } else {
+                                    calcValue += val;
+                                }
+                                updateDisplay();
+                            }
+                            
+                            function calculate() {
+                                try {
+                                    calcValue = eval(calcValue).toString();
+                                    updateDisplay();
+                                } catch (e) {
+                                    calcValue = 'Error';
+                                    updateDisplay();
+                                    setTimeout(() => {
+                                        calcValue = '0';
+                                        updateDisplay();
+                                    }, 1000);
+                                }
+                            }
+                        </script>
+                    `,
+                    width: 350,
+                    height: 480,
+                    resizable: false
+                });
+                console.log('Calculator opened:', calcId);
+            }
+        };
+
+        window.createNotepad = () => {
+            const id = gui.createTextWindow('📝 Notepad', 'Welcome to LonxOS Notepad!\n\nThis is a test of the text window functionality with smooth animations and fullscreen support.\n\nTry the fullscreen button! 🔲');
+            console.log('Created notepad window:', id);
+        };
+
+        window.createAbout = () => {
+            const id = gui.createWindow({
+                title: 'About LonxOS',
+                icon: '🐧',
+                content: `
+                    <div style="padding: 40px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                        <h1 style="margin: 0 0 20px 0; font-size: 48px;">🐧 LonxOS</h1>
+                        <h2 style="margin: 0 0 30px 0; font-weight: 300; opacity: 0.9;">Web-Based Operating System</h2>
+                        
+                        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 12px; padding: 30px; margin: 20px 0; text-align: left;">
+                            <h3 style="margin-top: 0; color: #ffeb3b;">✨ LWM v1.0 Features</h3>
+                            <ul style="list-style: none; padding: 0;">
+                                <li style="margin: 10px 0;">🔲 True Fullscreen Mode</li>
+                                <li style="margin: 10px 0;">🖱️ Buttery Smooth Dragging</li>
+                                <li style="margin: 10px 0;">📏 Real-time Live Resizing</li>
+                                <li style="margin: 10px 0;">✨ Fade Animations</li>
+                                <li style="margin: 10px 0;">🌟 Focus Glow Effects</li>
+                                <li style="margin: 10px 0;">⌨️ Keyboard Shortcuts</li>
+                                <li style="margin: 10px 0;">🏠 Show Desktop Mode</li>
+                            </ul>
+                        </div>
+                        
+                        <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 12px; padding: 20px; margin: 20px 0;">
+                            <p style="margin: 0; font-size: 14px; opacity: 0.8;">
+                                <strong>Version:</strong> 1.0.0<br>
+                                <strong>Window Manager:</strong> LWM v1.0<br>
+                                <strong>Animations:</strong> Enabled<br>
+                                <strong>Build:</strong> ${new Date().toISOString().split('T')[0]}
+                            </p>
+                        </div>
+                        
+                        <p style="margin: 30px 0 0 0; font-size: 12px; opacity: 0.7;">
+                            Built with ❤️ and smooth as f**k animations
+                        </p>
+                    </div>
+                `,
+                width: 500,
+                height: 600,
+                resizable: true
+            });
+            console.log('Created about window:', id);
+        };
+
+        window.testFullscreen = () => {
+            const windows = gui.getWindowList();
+            if (windows.length > 0) {
+                gui.toggleFullscreen(windows[0].id);
+                console.log('Toggled fullscreen for window:', windows[0].id);
+            } else {
+                alert('No windows to fullscreen! Create a window first.');
+            }
+        };
+
+        window.showDesktop = () => {
+            gui.showDesktop();
+            console.log('Showing desktop - minimized all windows');
+        };
+
+        window.listWindows = () => {
+            const windows = gui.getWindowList();
+            console.log('Current windows:', windows);
+            
+            const infoDiv = document.createElement('div');
+            infoDiv.style.cssText = `
+                position: fixed; 
+                top: 50%; left: 50%; 
+                transform: translate(-50%, -50%);
+                background: rgba(0,0,0,0.8); 
+                color: white; 
+                padding: 20px; 
+                border-radius: 8px; 
+                z-index: 10001;
+                font-family: monospace;
+                max-width: 400px;
+            `;
+            infoDiv.innerHTML = `
+                <h3>📋 Active Windows (${windows.length})</h3>
+                ${windows.length === 0 ? '<p>No windows open</p>' : 
+                  windows.map(w => `<p>• ${w.title} ${w.isMinimized ? '(minimized)' : ''} ${w.isMaximized ? '(maximized)' : ''}</p>`).join('')
+                }
+                <button onclick="this.parentNode.remove()" style="margin-top: 10px; padding: 5px 10px; background: #007AFF; color: white; border: none; border-radius: 4px; cursor: pointer;">Close</button>
+            `;
+            document.body.appendChild(infoDiv);
+            
+            setTimeout(() => {
+                if (infoDiv.parentNode) infoDiv.remove();
+            }, 5000);
+        };
+
+        window.closeAllWindows = () => {
+            const windows = gui.getWindowList();
+            windows.forEach(w => gui.closeWindow(w.id));
+            console.log('Closed all windows');
+        };
+
+        console.log('🚀 LonxOS Window Manager v1.0 Test Page Loaded!');
+        console.log('Available globals: window.lonx, window.gui, window.wm');
+        console.log('Try creating windows and testing the smooth animations!');
+    </script>
+</body>
+</html>

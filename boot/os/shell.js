@@ -357,6 +357,22 @@ System Management:
   settings set <key> <value> - Set system settings
   settings list             - List all settings
   
+GUI Commands:
+  gui window [title] [url]  - Create new GUI window
+  gui list                  - List all open windows
+  gui close <id>            - Close window by ID
+  gui focus <id>            - Focus window by ID
+  gui minimize <id>         - Minimize window
+  gui maximize <id>         - Maximize window
+  gui alert <message>       - Show alert dialog
+  gui text <title> <text>   - Create text window
+  gui desktop               - Show desktop (minimize all)
+  
+GUI Applications:
+  calculator                - Open calculator app
+  notepad                   - Open text editor/notepad
+  about                     - Show system information
+  
 Process Management:
   ps                        - List running processes
   kill <pid>                - Kill process by ID
@@ -779,6 +795,265 @@ Type 'help <command>' for detailed help on specific commands.`;
         } else {
             return 'settings: Usage: settings {get|set|list} [key] [value]';
         }
+    },
+    
+    // GUI Window Manager commands
+    gui: (args) => {
+        const action = args[0];
+        
+        if (!window.lonx?.gui) {
+            return 'GUI: Window Manager not available';
+        }
+        
+        switch (action) {
+            case 'window':
+            case 'create':
+                const title = args[1] || 'New Window';
+                const url = args[2] || 'about:blank';
+                const windowId = window.lonx.gui.createWindow({
+                    title,
+                    url,
+                    width: 800,
+                    height: 600
+                });
+                return `Created window: ${windowId}`;
+                
+            case 'list':
+                const windows = window.lonx.gui.getWindowList();
+                if (windows.length === 0) {
+                    return 'No windows open';
+                }
+                return windows.map(w => 
+                    `${w.id}: ${w.title} ${w.isMinimized ? '(minimized)' : ''} ${w.isMaximized ? '(maximized)' : ''}`
+                ).join('\n');
+                
+            case 'close':
+                const closeId = args[1];
+                if (!closeId) return 'Usage: gui close <window-id>';
+                window.lonx.gui.closeWindow(closeId);
+                return `Closed window: ${closeId}`;
+                
+            case 'focus':
+                const focusId = args[1];
+                if (!focusId) return 'Usage: gui focus <window-id>';
+                window.lonx.gui.focusWindow(focusId);
+                return `Focused window: ${focusId}`;
+                
+            case 'minimize':
+                const minId = args[1];
+                if (!minId) return 'Usage: gui minimize <window-id>';
+                window.lonx.gui.minimizeWindow(minId);
+                return `Minimized window: ${minId}`;
+                
+            case 'maximize':
+                const maxId = args[1];
+                if (!maxId) return 'Usage: gui maximize <window-id>';
+                window.lonx.gui.maximizeWindow(maxId);
+                return `Maximized window: ${maxId}`;
+                
+            case 'alert':
+                const message = args.slice(1).join(' ') || 'Hello World!';
+                window.lonx.gui.alert(message);
+                return 'Alert window created';
+                
+            case 'text':
+                const textTitle = args[1] || 'Text Window';
+                const textContent = args.slice(2).join(' ') || 'Hello from LonxOS!';
+                const textId = window.lonx.gui.createTextWindow(textTitle, textContent);
+                return `Created text window: ${textId}`;
+                
+            case 'desktop':
+                window.lonx.gui.showDesktop();
+                return 'Minimized all windows';
+                
+            default:
+                return `GUI Commands:
+  gui window [title] [url]  - Create new window
+  gui list                  - List all windows
+  gui close <id>           - Close window
+  gui focus <id>           - Focus window
+  gui minimize <id>        - Minimize window
+  gui maximize <id>        - Maximize window
+  gui alert <message>      - Show alert dialog
+  gui text <title> <text>  - Create text window
+  gui desktop              - Show desktop (minimize all)`;
+        }
+    },
+    
+    // Quick window launcher commands
+    calculator: () => {
+        if (!window.lonx?.gui) {
+            return 'GUI: Window Manager not available';
+        }
+        
+        const calcId = window.lonx.gui.createWindow({
+            title: '🧮 Calculator',
+            icon: '🧮',
+            content: `
+                <div style="padding: 20px; text-align: center; background: #f0f0f0;">
+                    <div style="background: #000; color: #0f0; padding: 10px; margin-bottom: 20px; font-family: monospace; font-size: 24px; border-radius: 4px;" id="calc-display">0</div>
+                    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-width: 300px; margin: 0 auto;">
+                        <button onclick="clearCalc()" style="grid-column: span 2; padding: 15px; font-size: 18px; border: none; background: #ff6b6b; color: white; border-radius: 4px; cursor: pointer;">Clear</button>
+                        <button onclick="appendToCalc('/')" style="padding: 15px; font-size: 18px; border: none; background: #4ecdc4; color: white; border-radius: 4px; cursor: pointer;">÷</button>
+                        <button onclick="appendToCalc('*')" style="padding: 15px; font-size: 18px; border: none; background: #4ecdc4; color: white; border-radius: 4px; cursor: pointer;">×</button>
+                        
+                        <button onclick="appendToCalc('7')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">7</button>
+                        <button onclick="appendToCalc('8')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">8</button>
+                        <button onclick="appendToCalc('9')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">9</button>
+                        <button onclick="appendToCalc('-')" style="padding: 15px; font-size: 18px; border: none; background: #4ecdc4; color: white; border-radius: 4px; cursor: pointer;">−</button>
+                        
+                        <button onclick="appendToCalc('4')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">4</button>
+                        <button onclick="appendToCalc('5')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">5</button>
+                        <button onclick="appendToCalc('6')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">6</button>
+                        <button onclick="appendToCalc('+')" style="padding: 15px; font-size: 18px; border: none; background: #4ecdc4; color: white; border-radius: 4px; cursor: pointer;">+</button>
+                        
+                        <button onclick="appendToCalc('1')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">1</button>
+                        <button onclick="appendToCalc('2')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">2</button>
+                        <button onclick="appendToCalc('3')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">3</button>
+                        <button onclick="calculate()" style="grid-row: span 2; padding: 15px; font-size: 18px; border: none; background: #007AFF; color: white; border-radius: 4px; cursor: pointer;">=</button>
+                        
+                        <button onclick="appendToCalc('0')" style="grid-column: span 2; padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">0</button>
+                        <button onclick="appendToCalc('.')" style="padding: 15px; font-size: 18px; border: none; background: #666; color: white; border-radius: 4px; cursor: pointer;">.</button>
+                    </div>
+                </div>
+                <script>
+                    let calcValue = '0';
+                    
+                    function updateDisplay() {
+                        document.getElementById('calc-display').textContent = calcValue;
+                    }
+                    
+                    function clearCalc() {
+                        calcValue = '0';
+                        updateDisplay();
+                    }
+                    
+                    function appendToCalc(val) {
+                        if (calcValue === '0' && val !== '.') {
+                            calcValue = val;
+                        } else {
+                            calcValue += val;
+                        }
+                        updateDisplay();
+                    }
+                    
+                    function calculate() {
+                        try {
+                            calcValue = eval(calcValue).toString();
+                            updateDisplay();
+                        } catch (e) {
+                            calcValue = 'Error';
+                            updateDisplay();
+                            setTimeout(() => {
+                                calcValue = '0';
+                                updateDisplay();
+                            }, 1000);
+                        }
+                    }
+                </script>
+            `,
+            width: 350,
+            height: 480,
+            resizable: false
+        });
+        
+        return `Calculator opened: ${calcId}`;
+    },
+    
+    notepad: () => {
+        if (!window.lonx?.gui) {
+            return 'GUI: Window Manager not available';
+        }
+        
+        const notepadId = window.lonx.gui.createWindow({
+            title: '📝 Notepad',
+            icon: '📝',
+            content: `
+                <div style="display: flex; flex-direction: column; height: 100%; background: #fff;">
+                    <div style="background: #f0f0f0; padding: 10px; border-bottom: 1px solid #ddd;">
+                        <button onclick="newFile()" style="margin-right: 10px; padding: 5px 10px; border: 1px solid #ccc; background: #fff; cursor: pointer;">New</button>
+                        <button onclick="saveFile()" style="margin-right: 10px; padding: 5px 10px; border: 1px solid #ccc; background: #fff; cursor: pointer;">Save</button>
+                        <button onclick="clearText()" style="padding: 5px 10px; border: 1px solid #ccc; background: #fff; cursor: pointer;">Clear</button>
+                    </div>
+                    <textarea id="notepad-text" 
+                              style="flex: 1; border: none; padding: 20px; font-family: 'Courier New', monospace; font-size: 14px; resize: none; outline: none;"
+                              placeholder="Start typing your notes here..."></textarea>
+                </div>
+                <script>
+                    function newFile() {
+                        document.getElementById('notepad-text').value = '';
+                    }
+                    
+                    function saveFile() {
+                        const text = document.getElementById('notepad-text').value;
+                        const blob = new Blob([text], { type: 'text/plain' });
+                        const url = URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'note.txt';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                    }
+                    
+                    function clearText() {
+                        if (confirm('Clear all text?')) {
+                            document.getElementById('notepad-text').value = '';
+                        }
+                    }
+                </script>
+            `,
+            width: 600,
+            height: 500
+        });
+        
+        return `Notepad opened: ${notepadId}`;
+    },
+    
+    about: () => {
+        if (!window.lonx?.gui) {
+            return 'GUI: Window Manager not available';
+        }
+        
+        const aboutId = window.lonx.gui.createWindow({
+            title: 'About LonxOS',
+            icon: '🐧',
+            content: `
+                <div style="padding: 40px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                    <h1 style="margin: 0 0 20px 0; font-size: 48px;">🐧 LonxOS</h1>
+                    <h2 style="margin: 0 0 30px 0; font-weight: 300; opacity: 0.9;">Web-Based Operating System</h2>
+                    
+                    <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 12px; padding: 30px; margin: 20px 0; text-align: left;">
+                        <h3 style="margin-top: 0; color: #ffeb3b;">✨ Features</h3>
+                        <ul style="list-style: none; padding: 0;">
+                            <li style="margin: 10px 0;">🪟 True Floating Window Manager</li>
+                            <li style="margin: 10px 0;">📁 Linux-like Filesystem Hierarchy</li>
+                            <li style="margin: 10px 0;">⚡ Real-time Process Management</li>
+                            <li style="margin: 10px 0;">📦 Package Manager (MIM)</li>
+                            <li style="margin: 10px 0;">🔧 Advanced Configuration System</li>
+                            <li style="margin: 10px 0;">💾 Persistent Storage</li>
+                        </ul>
+                    </div>
+                    
+                    <div style="background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); border-radius: 12px; padding: 20px; margin: 20px 0;">
+                        <p style="margin: 0; font-size: 14px; opacity: 0.8;">
+                            <strong>Version:</strong> 1.0.0<br>
+                            <strong>Kernel:</strong> LonxOS Kernel v1.0<br>
+                            <strong>Window Manager:</strong> LWM v1.0<br>
+                            <strong>Build:</strong> ${new Date().toISOString().split('T')[0]}
+                        </p>
+                    </div>
+                    
+                    <p style="margin: 30px 0 0 0; font-size: 12px; opacity: 0.7;">
+                        Built with ❤️ by the LonxOS Team
+                    </p>
+                </div>
+            `,
+            width: 500,
+            height: 600,
+            resizable: false
+        });
+        
+        return `About window opened: ${aboutId}`;
     }
 };
 export async function handleShellInput(e) {

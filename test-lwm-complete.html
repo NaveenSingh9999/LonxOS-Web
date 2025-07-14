@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LonxWM v1.0 Complete Test</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .test-controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        .control-group {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .control-group h3 {
+            margin-top: 0;
+            color: #64ffda;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .status {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #64ffda;
+        }
+        
+        .window-info {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>🖥️ LonxWM v1.0 Complete Test Suite</h1>
+            <p>Testing all features of the enhanced LonxOS Window Manager</p>
+        </div>
+        
+        <div class="test-controls">
+            <div class="control-group">
+                <h3>📋 Basic Windows</h3>
+                <button onclick="createSimpleWindow()">Create Simple Window</button>
+                <button onclick="createStyledWindow()">Create Styled Window</button>
+                <button onclick="createResizableWindow()">Create Resizable Window</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>🎯 Advanced Features</h3>
+                <button onclick="createFullscreenWindow()">Create Fullscreen Window</button>
+                <button onclick="createModalWindow()">Create Modal Window</button>
+                <button onclick="createAnimatedWindow()">Create Animated Window</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>🔧 Window Management</h3>
+                <button onclick="closeAllWindows()">Close All Windows</button>
+                <button onclick="minimizeAllWindows()">Minimize All Windows</button>
+                <button onclick="maximizeFirstWindow()">Maximize First Window</button>
+                <button onclick="toggleFullscreenMode()">Toggle Fullscreen Mode</button>
+            </div>
+            
+            <div class="control-group">
+                <h3>📊 System Info</h3>
+                <button onclick="showWindowCount()">Show Window Count</button>
+                <button onclick="listAllWindows()">List All Windows</button>
+                <button onclick="testGUIAPI()">Test GUI API</button>
+                <button onclick="checkAnimations()">Check Animations</button>
+            </div>
+        </div>
+        
+        <div id="status" class="status">
+            <strong>Status:</strong> Ready to test LonxWM v1.0
+        </div>
+        
+        <div id="info" class="window-info"></div>
+    </div>
+
+    <!-- Load LonxWM and GUI API -->
+    <script src="os/lwm.js"></script>
+    <script src="os/gui.js"></script>
+    
+    <script>
+        let windowManager = null;
+        let guiAPI = null;
+        let windowCounter = 0;
+        
+        function updateStatus(message) {
+            document.getElementById('status').innerHTML = `<strong>Status:</strong> ${message}`;
+        }
+        
+        function updateInfo(info) {
+            document.getElementById('info').innerHTML = info;
+        }
+        
+        function initializeSystem() {
+            try {
+                // Initialize window manager
+                windowManager = initWindowManager();
+                updateStatus('✅ LonxWM v1.0 initialized successfully');
+                
+                // Initialize GUI API
+                guiAPI = createGUIAPI(windowManager);
+                updateStatus('✅ LonxWM v1.0 and GUI API initialized successfully');
+                
+                return true;
+            } catch (error) {
+                updateStatus(`❌ Initialization failed: ${error.message}`);
+                console.error('LonxWM initialization error:', error);
+                return false;
+            }
+        }
+        
+        function createSimpleWindow() {
+            if (!windowManager && !initializeSystem()) return;
+            
+            windowCounter++;
+            const windowId = `simple-window-${windowCounter}`;
+            
+            try {
+                const window = windowManager.createWindow({
+                    id: windowId,
+                    title: `Simple Window ${windowCounter}`,
+                    content: `
+                        <div style="padding: 20px; text-align: center;">
+                            <h2>Simple Window ${windowCounter}</h2>
+                            <p>This is a basic window created by LonxWM v1.0</p>
+                            <button onclick="alert('Hello from window ${windowCounter}!')">Test Button</button>
+                        </div>
+                    `,
+                    width: 400,
+                    height: 300,
+                    x: 50 + (windowCounter * 30),
+                    y: 50 + (windowCounter * 30)
+                });
+                
+                updateStatus(`✅ Created simple window: ${windowId}`);
+                updateWindowInfo();
+            } catch (error) {
+                updateStatus(`❌ Failed to create simple window: ${error.message}`);
+            }
+        }
+        
+        function createStyledWindow() {
+            if (!windowManager && !initializeSystem()) return;
+            
+            windowCounter++;
+            const windowId = `styled-window-${windowCounter}`;
+            
+            try {
+                const window = windowManager.createWindow({
+                    id: windowId,
+                    title: `🎨 Styled Window ${windowCounter}`,
+                    content: `
+                        <div style="padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; text-align: center; border-radius: 10px;">
+                            <h2>🎨 Styled Window</h2>
+                            <p>This window has custom styling and animations</p>
+                            <div style="margin: 20px 0;">
+                                <button style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 5px; cursor: pointer;" onclick="this.style.background='rgba(255,255,255,0.4)'">Hover Effect</button>
+                            </div>
+                            <p style="font-size: 14px; opacity: 0.8;">Window ID: ${windowId}</p>
+                        </div>
+                    `,
+                    width: 450,
+                    height: 350,
+                    x: 100 + (windowCounter * 25),
+                    y: 100 + (windowCounter * 25)
+                });
+                
+                updateStatus(`✅ Created styled window: ${windowId}`);
+                updateWindowInfo();
+            } catch (error) {
+                updateStatus(`❌ Failed to create styled window: ${error.message}`);
+            }
+        }
+        
+        function createResizableWindow() {
+            if (!windowManager && !initializeSystem()) return;
+            
+            windowCounter++;
+            const windowId = `resizable-window-${windowCounter}`;
+            
+            try {
+                const window = windowManager.createWindow({
+                    id: windowId,
+                    title: `📏 Resizable Window ${windowCounter}`,
+                    content: `
+                        <div style="padding: 20px;">
+                            <h3>📏 Resizable Window</h3>
+                            <p>Try dragging the corners and edges to resize this window!</p>
+                            <div style="background: #f0f0f0; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                                <strong>Features:</strong>
+                                <ul>
+                                    <li>✅ Draggable by title bar</li>
+                                    <li>✅ Resizable from all edges</li>
+                                    <li>✅ Smooth animations</li>
+                                    <li>✅ Minimize/Maximize controls</li>
+                                </ul>
+                            </div>
+                            <p style="color: #666; font-size: 12px;">Window: ${windowId}</p>
+                        </div>
+                    `,
+                    width: 500,
+                    height: 400,
+                    x: 150 + (windowCounter * 20),
+                    y: 80 + (windowCounter * 20),
+                    resizable: true
+                });
+                
+                updateStatus(`✅ Created resizable window: ${windowId}`);
+                updateWindowInfo();
+            } catch (error) {
+                updateStatus(`❌ Failed to create resizable window: ${error.message}`);
+            }
+        }
+        
+        function createFullscreenWindow() {
+            if (!windowManager && !initializeSystem()) return;
+            
+            windowCounter++;
+            const windowId = `fullscreen-window-${windowCounter}`;
+            
+            try {
+                const window = windowManager.createWindow({
+                    id: windowId,
+                    title: `🖥️ Fullscreen Window ${windowCounter}`,
+                    content: `
+                        <div style="padding: 40px; text-align: center; height: 100%; background: linear-gradient(45deg, #1a1a2e, #16213e); color: white;">
+                            <h1>🖥️ Fullscreen Window</h1>
+                            <p style="font-size: 18px; margin: 30px 0;">This window demonstrates fullscreen capabilities</p>
+                            <div style="margin: 40px 0;">
+                                <button style="background: #667eea; color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 10px;" onclick="windowManager.toggleFullscreen('${windowId}')">Toggle Fullscreen</button>
+                                <button style="background: #764ba2; color: white; border: none; padding: 15px 30px; border-radius: 8px; font-size: 16px; cursor: pointer; margin: 10px;" onclick="windowManager.closeWindow('${windowId}')">Close Window</button>
+                            </div>
+                            <p style="opacity: 0.7;">Press the fullscreen button in the title bar or use the toggle button above</p>
+                        </div>
+                    `,
+                    width: 600,
+                    height: 450,
+                    x: 200,
+                    y: 100
+                });
+                
+                updateStatus(`✅ Created fullscreen window: ${windowId}`);
+                updateWindowInfo();
+            } catch (error) {
+                updateStatus(`❌ Failed to create fullscreen window: ${error.message}`);
+            }
+        }
+        
+        function createModalWindow() {
+            if (!windowManager && !initializeSystem()) return;
+            
+            windowCounter++;
+            const windowId = `modal-window-${windowCounter}`;
+            
+            try {
+                const window = windowManager.createWindow({
+                    id: windowId,
+                    title: `⚠️ Modal Dialog ${windowCounter}`,
+                    content: `
+                        <div style="padding: 30px; text-align: center; background: white; color: #333;">
+                            <div style="font-size: 48px; margin-bottom: 20px;">⚠️</div>
+                            <h2 style="margin: 0 0 15px 0; color: #d32f2f;">Important Notice</h2>
+                            <p style="margin: 20px 0; line-height: 1.6;">
+                                This is a modal dialog window created by LonxWM v1.0.<br>
+                                Modal windows typically require user interaction before proceeding.
+                            </p>
+                            <div style="margin-top: 30px;">
+                                <button style="background: #d32f2f; color: white; border: none; padding: 12px 24px; border-radius: 5px; margin: 0 10px; cursor: pointer;" onclick="windowManager.closeWindow('${windowId}')">Cancel</button>
+                                <button style="background: #1976d2; color: white; border: none; padding: 12px 24px; border-radius: 5px; margin: 0 10px; cursor: pointer;" onclick="alert('Confirmed!'); windowManager.closeWindow('${windowId}')">Confirm</button>
+                            </div>
+                        </div>
+                    `,
+                    width: 450,
+                    height: 280,
+                    x: window.innerWidth / 2 - 225,
+                    y: window.innerHeight / 2 - 140,
+                    modal: true
+                });
+                
+                updateStatus(`✅ Created modal window: ${windowId}`);
+                updateWindowInfo();
+            } catch (error) {
+                updateStatus(`❌ Failed to create modal window: ${error.message}`);
+            }
+        }
+        
+        function createAnimatedWindow() {
+            if (!windowManager && !initializeSystem()) return;
+            
+            windowCounter++;
+            const windowId = `animated-window-${windowCounter}`;
+            
+            try {
+                const window = windowManager.createWindow({
+                    id: windowId,
+                    title: `✨ Animated Window ${windowCounter}`,
+                    content: `
+                        <div style="padding: 20px; text-align: center;">
+                            <h3>✨ Animation Showcase</h3>
+                            <p>This window demonstrates LonxWM's smooth animations</p>
+                            <div id="animation-demo" style="width: 100px; height: 100px; background: linear-gradient(45deg, #ff6b6b, #4ecdc4); margin: 20px auto; border-radius: 50%; transition: all 0.5s ease;"></div>
+                            <button onclick="animateDemo('${windowId}')" style="background: #667eea; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Animate</button>
+                            <div style="margin-top: 20px; padding: 15px; background: #f5f5f5; border-radius: 5px;">
+                                <strong>Animation Features:</strong><br>
+                                • Smooth window transitions<br>
+                                • Hardware-accelerated transforms<br>
+                                • Cubic-bezier easing<br>
+                                • 60fps animations
+                            </div>
+                        </div>
+                    `,
+                    width: 400,
+                    height: 420,
+                    x: 250 + (windowCounter * 15),
+                    y: 120 + (windowCounter * 15)
+                });
+                
+                updateStatus(`✅ Created animated window: ${windowId}`);
+                updateWindowInfo();
+            } catch (error) {
+                updateStatus(`❌ Failed to create animated window: ${error.message}`);
+            }
+        }
+        
+        function animateDemo(windowId) {
+            const demo = document.querySelector(`#${windowId} #animation-demo`);
+            if (demo) {
+                demo.style.transform = demo.style.transform === 'scale(1.5) rotate(360deg)' ? 'scale(1) rotate(0deg)' : 'scale(1.5) rotate(360deg)';
+            }
+        }
+        
+        function closeAllWindows() {
+            if (!windowManager) {
+                updateStatus('❌ Window manager not initialized');
+                return;
+            }
+            
+            try {
+                const windows = windowManager.getAllWindows();
+                const count = windows.length;
+                
+                windows.forEach(window => {
+                    windowManager.closeWindow(window.id);
+                });
+                
+                updateStatus(`✅ Closed ${count} windows`);
+                updateWindowInfo();
+            } catch (error) {
+                updateStatus(`❌ Failed to close windows: ${error.message}`);
+            }
+        }
+        
+        function minimizeAllWindows() {
+            if (!windowManager) {
+                updateStatus('❌ Window manager not initialized');
+                return;
+            }
+            
+            try {
+                const windows = windowManager.getAllWindows();
+                const count = windows.length;
+                
+                windows.forEach(window => {
+                    if (!window.minimized) {
+                        windowManager.minimizeWindow(window.id);
+                    }
+                });
+                
+                updateStatus(`✅ Minimized ${count} windows`);
+                updateWindowInfo();
+            } catch (error) {
+                updateStatus(`❌ Failed to minimize windows: ${error.message}`);
+            }
+        }
+        
+        function maximizeFirstWindow() {
+            if (!windowManager) {
+                updateStatus('❌ Window manager not initialized');
+                return;
+            }
+            
+            try {
+                const windows = windowManager.getAllWindows();
+                if (windows.length === 0) {
+                    updateStatus('❌ No windows to maximize');
+                    return;
+                }
+                
+                const firstWindow = windows[0];
+                windowManager.maximizeWindow(firstWindow.id);
+                updateStatus(`✅ Maximized window: ${firstWindow.id}`);
+                updateWindowInfo();
+            } catch (error) {
+                updateStatus(`❌ Failed to maximize window: ${error.message}`);
+            }
+        }
+        
+        function toggleFullscreenMode() {
+            if (!windowManager) {
+                updateStatus('❌ Window manager not initialized');
+                return;
+            }
+            
+            try {
+                const isFullscreen = windowManager.isFullscreenMode();
+                windowManager.toggleFullscreenMode();
+                updateStatus(`✅ Fullscreen mode: ${!isFullscreen ? 'ON' : 'OFF'}`);
+            } catch (error) {
+                updateStatus(`❌ Failed to toggle fullscreen: ${error.message}`);
+            }
+        }
+        
+        function showWindowCount() {
+            if (!windowManager) {
+                updateStatus('❌ Window manager not initialized');
+                return;
+            }
+            
+            try {
+                const windows = windowManager.getAllWindows();
+                const visible = windows.filter(w => !w.minimized).length;
+                const minimized = windows.filter(w => w.minimized).length;
+                
+                updateStatus(`📊 Total: ${windows.length} windows (${visible} visible, ${minimized} minimized)`);
+                updateWindowInfo();
+            } catch (error) {
+                updateStatus(`❌ Failed to get window count: ${error.message}`);
+            }
+        }
+        
+        function listAllWindows() {
+            if (!windowManager) {
+                updateStatus('❌ Window manager not initialized');
+                return;
+            }
+            
+            try {
+                const windows = windowManager.getAllWindows();
+                let info = '<h4>All Windows:</h4>';
+                
+                if (windows.length === 0) {
+                    info += '<p>No windows open</p>';
+                } else {
+                    windows.forEach((window, index) => {
+                        info += `
+                            <div style="margin: 10px 0; padding: 10px; background: rgba(255,255,255,0.1); border-radius: 5px;">
+                                <strong>${index + 1}. ${window.title}</strong><br>
+                                ID: ${window.id}<br>
+                                Size: ${window.width}x${window.height}<br>
+                                Position: (${window.x}, ${window.y})<br>
+                                State: ${window.minimized ? 'Minimized' : window.maximized ? 'Maximized' : 'Normal'}
+                            </div>
+                        `;
+                    });
+                }
+                
+                updateInfo(info);
+                updateStatus(`✅ Listed ${windows.length} windows`);
+            } catch (error) {
+                updateStatus(`❌ Failed to list windows: ${error.message}`);
+            }
+        }
+        
+        function testGUIAPI() {
+            if (!guiAPI && !initializeSystem()) return;
+            
+            try {
+                // Test GUI API functionality
+                const testWindow = guiAPI.createWindow({
+                    title: '🧪 GUI API Test',
+                    content: `
+                        <div style="padding: 20px; text-align: center;">
+                            <h3>🧪 GUI API Test</h3>
+                            <p>This window was created using the LonxOS GUI API</p>
+                            <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; margin: 15px 0; border: 1px solid #4caf50;">
+                                <strong>✅ GUI API Working Correctly</strong><br>
+                                <small>Window created via createGUIAPI() interface</small>
+                            </div>
+                            <button onclick="guiAPI.closeWindow('gui-test-window')" style="background: #f44336; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer;">Close via API</button>
+                        </div>
+                    `,
+                    width: 400,
+                    height: 280,
+                    x: 300,
+                    y: 200
+                });
+                
+                updateStatus('✅ GUI API test successful - window created via API');
+                updateWindowInfo();
+            } catch (error) {
+                updateStatus(`❌ GUI API test failed: ${error.message}`);
+            }
+        }
+        
+        function checkAnimations() {
+            updateStatus('🔍 Checking animation support...');
+            
+            try {
+                // Check for CSS animation support
+                const testElement = document.createElement('div');
+                testElement.style.cssText = 'transition: transform 0.3s ease; transform: translateZ(0);';
+                
+                const hasTransitions = testElement.style.transition !== '';
+                const hasTransforms = testElement.style.transform !== '';
+                
+                let info = '<h4>Animation Support Check:</h4>';
+                info += `<p>✅ CSS Transitions: ${hasTransitions ? 'Supported' : 'Not supported'}</p>`;
+                info += `<p>✅ CSS Transforms: ${hasTransforms ? 'Supported' : 'Not supported'}</p>`;
+                info += `<p>✅ Hardware Acceleration: ${hasTransforms ? 'Available (translateZ)' : 'Not available'}</p>`;
+                
+                if (windowManager) {
+                    info += '<p>✅ LonxWM Animation Features:</p>';
+                    info += '<ul style="text-align: left; margin-left: 20px;">';
+                    info += '<li>Smooth window transitions (300ms)</li>';
+                    info += '<li>Cubic-bezier easing curves</li>';
+                    info += '<li>Hardware-accelerated transforms</li>';
+                    info += '<li>Optimized animation loops</li>';
+                    info += '</ul>';
+                }
+                
+                updateInfo(info);
+                updateStatus('✅ Animation support check completed');
+            } catch (error) {
+                updateStatus(`❌ Animation check failed: ${error.message}`);
+            }
+        }
+        
+        function updateWindowInfo() {
+            if (!windowManager) return;
+            
+            try {
+                const windows = windowManager.getAllWindows();
+                let info = `<strong>Current Windows:</strong> ${windows.length} total`;
+                
+                if (windows.length > 0) {
+                    const visible = windows.filter(w => !w.minimized).length;
+                    const minimized = windows.filter(w => w.minimized).length;
+                    info += ` (${visible} visible, ${minimized} minimized)`;
+                }
+                
+                document.getElementById('info').innerHTML = info;
+            } catch (error) {
+                console.error('Failed to update window info:', error);
+            }
+        }
+        
+        // Initialize system on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStatus('🚀 LonxWM v1.0 Test Suite Ready');
+            
+            // Auto-initialize the system
+            setTimeout(() => {
+                if (initializeSystem()) {
+                    updateStatus('✅ LonxWM v1.0 system ready for testing');
+                }
+            }, 500);
+        });
+    </script>
+</body>
+</html>

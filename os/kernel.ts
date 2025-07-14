@@ -9,6 +9,8 @@ import { ptm } from './core/ptm.js';
 import { updateManager } from './core/updater.js';
 import { updateService } from './core/update-service.js';
 import { initMim } from './mim.js';
+import { initWindowManager } from './lwm.js';
+import { createGUIAPI } from './gui.js';
 
 let kernelState = 'HALTED';
 
@@ -55,8 +57,25 @@ export async function boot() {
     initShell(bootScreen);
     updateShellPrompt(config.identity.username, config.identity.hostname);
     
+    // Initialize GUI Window Manager
+    try {
+        const wm = initWindowManager();
+        shellPrint('[BOOT] GUI Window Manager initialized');
+        
+        // Create global lonx object with GUI API
+        (window as any).lonx = {
+            gui: createGUIAPI(wm), // Pass the window manager to the GUI API
+            wm: wm
+        };
+        
+    } catch (error) {
+        console.warn('[BOOT] Window Manager initialization failed:', error);
+        shellPrint('[BOOT] Warning: GUI features may not be available');
+    }
+    
     shellPrint('Welcome to Lonx OS!');
     shellPrint(`Hardware: ${getHardwareInfo().cpu.cores} Cores @ ${getHardwareInfo().cpu.speed.toFixed(2)}GHz, ${memoryController.getTotal()}MB RAM`);
+    shellPrint('🪟 GUI Window Manager: Ready');
     
     // Initialize MIM package manager
     try {
