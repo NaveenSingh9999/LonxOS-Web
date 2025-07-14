@@ -45,7 +45,22 @@
     "version": "1.1.0",
     "url": "packages/man.js",
     "checksum": "sha256:man-v1.1.0",
-    "lastUpdated": "2025-07-13T00:00:00Z",
-    "_comment": "yo"
+    "lastUpdated": "2025-07-13T00:00:00Z"
+  },
+  {
+    "name": "zip",
+    "desc": "Advanced GUI ZIP archive manager with CLI support",
+    "version": "1.0.0",
+    "url": "packages/zip.js",
+    "checksum": "sha256:zip-v1.0.0",
+    "lastUpdated": "2025-07-14T00:00:00Z"
+  },
+  {
+    "name": "tar",
+    "desc": "Professional TAR/TAR.GZ archive manager with compression support",
+    "version": "1.0.0",
+    "url": "packages/tar.js",
+    "checksum": "sha256:tar-v1.0.0",
+    "lastUpdated": "2025-07-14T00:00:00Z"
   }
 ]

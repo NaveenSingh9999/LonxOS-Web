@@ -444,7 +444,128 @@ AVAILABLE MANUALS
     Documentation: man
 
 AUTHOR
-    Lonx OS development team`
+    Lonx OS development team`,
+
+        'zip': `NAME
+    zip - Advanced ZIP archive manager
+
+SYNOPSIS
+    zip                           Launch GUI mode
+    zip list <archive.zip>        List archive contents
+    zip extract <archive.zip> [dest]  Extract archive  
+    zip create <archive.zip> <files...>  Create new archive
+    zip add <archive.zip> <files...>     Add files to archive
+    zip help                      Show help
+
+DESCRIPTION
+    ZIP is a comprehensive archive manager for LonxOS that supports both
+    GUI and command-line interfaces. It provides full ZIP archive functionality
+    with an intuitive file browser interface similar to nano.
+
+GUI MODE FEATURES
+    - Visual file browser with syntax highlighting
+    - Drag-and-drop file selection
+    - Real-time compression statistics
+    - Batch operations with file marking
+    - Multiple compression levels (0-9)
+    - Progress bars for long operations
+
+KEYBOARD SHORTCUTS (GUI)
+    ↑↓          Navigate file list
+    Enter       Extract file or enter directory
+    Space       Mark/unmark files for batch operations
+    Ctrl+O      Open existing archive
+    Ctrl+N      Create new archive
+    Ctrl+E      Extract all files
+    Ctrl+A      Add files to archive
+    Ctrl+Q      Quit application
+    F1          Show help
+
+CLI EXAMPLES
+    zip                           # Launch GUI
+    zip list backup.zip           # List contents
+    zip extract docs.zip /tmp/    # Extract to directory
+    zip create project.zip *.js *.md  # Create from files
+    zip add archive.zip newfile.txt   # Add file
+
+COMPRESSION
+    Supports compression levels 0-9:
+    0 = Store only (no compression)
+    5 = Normal compression (default)
+    9 = Maximum compression
+
+FILES
+    Supports standard ZIP format and ZIP-compatible archives (.jar, .apk).
+
+AUTHOR
+    LonxOS Archive Tools Team`,
+
+        'tar': `NAME
+    tar - Professional TAR archive manager
+
+SYNOPSIS
+    tar                                    Launch GUI mode
+    tar list <archive>                     List archive contents
+    tar extract <archive> [dest]           Extract archive
+    tar create <archive> <files...>        Create new archive
+    tar add <archive> <files...>           Add files to archive
+    tar compress <file> [method]           Compress file
+    tar decompress <file>                  Decompress file
+    tar help                               Show help
+
+DESCRIPTION
+    TAR is a professional archive manager supporting TAR format and various
+    compression methods. Features a sophisticated GUI with file permissions,
+    ownership display, and advanced compression options.
+
+GUI MODE FEATURES
+    - Detailed file listing with permissions and ownership
+    - Support for symbolic links and special files
+    - Multiple view modes (list, details, tree)
+    - Permission preservation during extraction
+    - Real-time compression statistics
+    - Multiple compression algorithms
+
+KEYBOARD SHORTCUTS (GUI)
+    ↑↓          Navigate file list
+    Enter       Extract file or view directory info
+    Space       Mark/unmark entries for batch operations
+    Ctrl+O      Open existing archive
+    Ctrl+N      Create new archive
+    Ctrl+E      Extract all entries
+    Ctrl+A      Add files to archive
+    Ctrl+C      Compress archive
+    Ctrl+D      Decompress archive
+    Ctrl+Q      Quit application
+    F1          Show help
+
+COMPRESSION FORMATS
+    none        Uncompressed TAR (.tar)
+    gzip        Gzip compression (.tar.gz, .tgz)
+    bzip2       Bzip2 compression (.tar.bz2, .tbz2)
+    xz          XZ compression (.tar.xz, .txz)
+    lzma        LZMA compression (.tar.lzma)
+
+CLI EXAMPLES
+    tar                           # Launch GUI
+    tar list backup.tar.gz        # List contents
+    tar extract src.tar.bz2 /tmp/ # Extract to directory
+    tar create docs.tar *.md      # Create archive
+    tar compress backup.tar gzip  # Compress with gzip
+
+ADVANCED FEATURES
+    - Preserves Unix file permissions and ownership
+    - Handles symbolic and hard links correctly
+    - Supports incremental and differential backups
+    - Path filtering and exclusion patterns
+    - Verification of archive integrity
+
+FILES
+    Supports TAR format and all major compression variants.
+    Compatible with GNU tar, BSD tar, and other implementations.
+
+AUTHOR
+    LonxOS Archive Tools Team`
     };
 
     if (args.length === 0) {
