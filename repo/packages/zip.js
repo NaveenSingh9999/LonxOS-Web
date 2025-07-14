@@ -1,11 +1,8 @@
 // LonxOS ZIP Archive Manager
 // Advanced GUI-based ZIP file manager with CLI interface
 
-import { read, write, list } from 'os/fs.js';
-import { shellPrint } from 'os/shell.js';
-
 class ZipManager {
-    constructor() {
+    constructor(lonx_api) {
         this.currentArchive = null;
         this.archiveContents = [];
         this.selectedIndex = 0;
@@ -14,6 +11,7 @@ class ZipManager {
         this.statusMessage = '';
         this.extractPath = '/tmp/';
         this.compressionLevel = 5;
+        this.lonx_api = lonx_api;
     }
 
     async init() {
@@ -433,7 +431,7 @@ class ZipManager {
         
         try {
             this.setStatus('Loading archive...');
-            const archiveData = read(filename);
+            const archiveData = this.lonx_api.fs.read(filename);
             
             if (!archiveData) {
                 throw new Error('Archive not found');
@@ -495,7 +493,7 @@ class ZipManager {
             const files = await this.collectFiles(sourcePath);
             const zipData = await this.createZipData(files);
             
-            write(filename, zipData);
+            this.lonx_api.fs.write(filename, zipData);
             this.setStatus(`Created archive ${filename} with ${files.length} files`);
             
             // Load the newly created archive
@@ -519,7 +517,7 @@ class ZipManager {
 
     async collectFiles(path, recursive = true) {
         const files = [];
-        const items = list(path);
+        const items = this.lonx_api.fs.list(path);
         
         if (typeof items === 'object') {
             for (const [name, content] of Object.entries(items)) {
@@ -594,7 +592,7 @@ class ZipManager {
                 
                 // Simulate file extraction
                 const content = `Extracted content of ${file.name}`;
-                write(targetPath, content);
+                this.lonx_api.fs.write(targetPath, content);
                 
                 // Update progress
                 const progress = Math.round(((i + 1) / files.length) * 100);
@@ -859,10 +857,10 @@ class ZipManager {
 }
 
 // Main function
-export async function main(args) {
+export async function main(args, lonx) {
     if (args.length === 0) {
         // Launch GUI mode
-        const manager = new ZipManager();
+        const manager = new ZipManager(lonx);
         window.zipManager = manager; // Make it globally accessible
         await manager.init();
     } else {
@@ -872,46 +870,46 @@ export async function main(args) {
         switch (command) {
             case 'list':
             case 'l':
-                await listArchive(args[1]);
+                await listArchive(args[1], lonx);
                 break;
             case 'extract':
             case 'x':
-                await extractArchive(args[1], args[2]);
+                await extractArchive(args[1], args[2], lonx);
                 break;
             case 'create':
             case 'c':
-                await createArchive(args[1], args.slice(2));
+                await createArchive(args[1], args.slice(2), lonx);
                 break;
             case 'add':
             case 'a':
-                await addToArchive(args[1], args.slice(2));
+                await addToArchive(args[1], args.slice(2), lonx);
                 break;
             case 'help':
-                showCLIHelp();
+                showCLIHelp(lonx);
                 break;
             default:
-                shellPrint(`Unknown command: ${command}. Use 'zip help' for usage.`);
+                lonx.shell.print(`Unknown command: ${command}. Use 'zip help' for usage.`);
         }
     }
 }
 
-async function listArchive(filename) {
+async function listArchive(filename, lonx) {
     if (!filename) {
-        shellPrint('Usage: zip list <archive.zip>');
+        lonx.shell.print('Usage: zip list <archive.zip>');
         return;
     }
     
     try {
-        const archiveData = read(filename);
+        const archiveData = lonx.fs.read(filename);
         if (!archiveData) {
-            shellPrint(`Error: Archive '${filename}' not found`);
+            lonx.shell.print(`Error: Archive '${filename}' not found`);
             return;
         }
         
-        shellPrint(`Archive: ${filename}`);
-        shellPrint('-------------------------------------------');
-        shellPrint('Name                    Size      Date');
-        shellPrint('-------------------------------------------');
+        lonx.shell.print(`Archive: ${filename}`);
+        lonx.shell.print('-------------------------------------------');
+        lonx.shell.print('Name                    Size      Date');
+        lonx.shell.print('-------------------------------------------');
         
         // Simulate archive listing
         const files = [
@@ -922,55 +920,55 @@ async function listArchive(filename) {
         
         files.forEach(file => {
             const sizeStr = file.size.toString().padStart(8);
-            shellPrint(`${file.name.padEnd(20)} ${sizeStr}   ${file.date}`);
+            lonx.shell.print(`${file.name.padEnd(20)} ${sizeStr}   ${file.date}`);
         });
         
-        shellPrint('-------------------------------------------');
-        shellPrint(`Total: ${files.length} files`);
+        lonx.shell.print('-------------------------------------------');
+        lonx.shell.print(`Total: ${files.length} files`);
         
     } catch (error) {
-        shellPrint(`Error: ${error.message}`);
+        lonx.shell.print(`Error: ${error.message}`);
     }
 }
 
-async function extractArchive(filename, destination = './') {
+async function extractArchive(filename, destination = './', lonx) {
     if (!filename) {
-        shellPrint('Usage: zip extract <archive.zip> [destination]');
+        lonx.shell.print('Usage: zip extract <archive.zip> [destination]');
         return;
     }
     
     try {
-        const archiveData = read(filename);
+        const archiveData = lonx.fs.read(filename);
         if (!archiveData) {
-            shellPrint(`Error: Archive '${filename}' not found`);
+            lonx.shell.print(`Error: Archive '${filename}' not found`);
             return;
         }
         
-        shellPrint(`Extracting '${filename}' to '${destination}'...`);
+        lonx.shell.print(`Extracting '${filename}' to '${destination}'...`);
         
         // Simulate extraction
         const files = ['example.txt', 'documents/readme.md'];
         for (const file of files) {
             const targetPath = `${destination}/${file}`.replace('//', '/');
-            write(targetPath, `Content of ${file}`);
-            shellPrint(`  extracted: ${file}`);
+            lonx.fs.write(targetPath, `Content of ${file}`);
+            lonx.shell.print(`  extracted: ${file}`);
         }
         
-        shellPrint(`✓ Extracted ${files.length} files`);
+        lonx.shell.print(`✓ Extracted ${files.length} files`);
         
     } catch (error) {
-        shellPrint(`Error: ${error.message}`);
+        lonx.shell.print(`Error: ${error.message}`);
     }
 }
 
-async function createArchive(filename, sources) {
+async function createArchive(filename, sources, lonx) {
     if (!filename || sources.length === 0) {
-        shellPrint('Usage: zip create <archive.zip> <file1> [file2] ...');
+        lonx.shell.print('Usage: zip create <archive.zip> <file1> [file2] ...');
         return;
     }
     
     try {
-        shellPrint(`Creating archive '${filename}'...`);
+        lonx.shell.print(`Creating archive '${filename}'...`);
         
         const archiveData = {
             files: [],
@@ -978,36 +976,36 @@ async function createArchive(filename, sources) {
         };
         
         for (const source of sources) {
-            const content = read(source);
+            const content = lonx.fs.read(source);
             if (content !== null) {
                 archiveData.files.push({
                     name: source,
                     content: content,
                     size: content.length
                 });
-                shellPrint(`  added: ${source}`);
+                lonx.shell.print(`  added: ${source}`);
             } else {
-                shellPrint(`  warning: '${source}' not found, skipping`);
+                lonx.shell.print(`  warning: '${source}' not found, skipping`);
             }
         }
         
-        write(filename, JSON.stringify(archiveData));
-        shellPrint(`✓ Created archive with ${archiveData.files.length} files`);
+        lonx.fs.write(filename, JSON.stringify(archiveData));
+        lonx.shell.print(`✓ Created archive with ${archiveData.files.length} files`);
         
     } catch (error) {
-        shellPrint(`Error: ${error.message}`);
+        lonx.shell.print(`Error: ${error.message}`);
     }
 }
 
-async function addToArchive(filename, sources) {
+async function addToArchive(filename, sources, lonx) {
     if (!filename || sources.length === 0) {
-        shellPrint('Usage: zip add <archive.zip> <file1> [file2] ...');
+        lonx.shell.print('Usage: zip add <archive.zip> <file1> [file2] ...');
         return;
     }
     
     try {
         let archiveData;
-        const existing = read(filename);
+        const existing = lonx.fs.read(filename);
         
         if (existing) {
             archiveData = JSON.parse(existing);
@@ -1015,46 +1013,46 @@ async function addToArchive(filename, sources) {
             archiveData = { files: [], created: new Date().toISOString() };
         }
         
-        shellPrint(`Adding files to '${filename}'...`);
+        lonx.shell.print(`Adding files to '${filename}'...`);
         
         for (const source of sources) {
-            const content = read(source);
+            const content = lonx.fs.read(source);
             if (content !== null) {
                 archiveData.files.push({
                     name: source,
                     content: content,
                     size: content.length
                 });
-                shellPrint(`  added: ${source}`);
+                lonx.shell.print(`  added: ${source}`);
             } else {
-                shellPrint(`  warning: '${source}' not found, skipping`);
+                lonx.shell.print(`  warning: '${source}' not found, skipping`);
             }
         }
         
-        write(filename, JSON.stringify(archiveData));
-        shellPrint(`✓ Archive now contains ${archiveData.files.length} files`);
+        lonx.fs.write(filename, JSON.stringify(archiveData));
+        lonx.shell.print(`✓ Archive now contains ${archiveData.files.length} files`);
         
     } catch (error) {
-        shellPrint(`Error: ${error.message}`);
+        lonx.shell.print(`Error: ${error.message}`);
     }
 }
 
-function showCLIHelp() {
-    shellPrint('LonxOS ZIP Manager - CLI Mode');
-    shellPrint('');
-    shellPrint('Usage:');
-    shellPrint('  zip                           Launch GUI mode');
-    shellPrint('  zip list <archive.zip>        List archive contents');
-    shellPrint('  zip extract <archive.zip> [dest]  Extract archive');
-    shellPrint('  zip create <archive.zip> <files...>  Create new archive');
-    shellPrint('  zip add <archive.zip> <files...>     Add files to archive');
-    shellPrint('  zip help                      Show this help');
-    shellPrint('');
-    shellPrint('Examples:');
-    shellPrint('  zip list myfiles.zip');
-    shellPrint('  zip extract backup.zip /tmp/');
-    shellPrint('  zip create documents.zip *.txt *.md');
-    shellPrint('  zip add project.zip newfile.js');
+function showCLIHelp(lonx) {
+    lonx.shell.print('LonxOS ZIP Manager - CLI Mode');
+    lonx.shell.print('');
+    lonx.shell.print('Usage:');
+    lonx.shell.print('  zip                           Launch GUI mode');
+    lonx.shell.print('  zip list <archive.zip>        List archive contents');
+    lonx.shell.print('  zip extract <archive.zip> [dest]  Extract archive');
+    lonx.shell.print('  zip create <archive.zip> <files...>  Create new archive');
+    lonx.shell.print('  zip add <archive.zip> <files...>     Add files to archive');
+    lonx.shell.print('  zip help                      Show this help');
+    lonx.shell.print('');
+    lonx.shell.print('Examples:');
+    lonx.shell.print('  zip list myfiles.zip');
+    lonx.shell.print('  zip extract backup.zip /tmp/');
+    lonx.shell.print('  zip create documents.zip *.txt *.md');
+    lonx.shell.print('  zip add project.zip newfile.js');
 }
 
 // Export for shell integration

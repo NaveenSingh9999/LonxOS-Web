@@ -1,11 +1,8 @@
 // LonxOS TAR Archive Manager
 // Advanced GUI-based TAR/TAR.GZ file manager with CLI interface
 
-import { read, write, list } from 'os/fs.js';
-import { shellPrint } from 'os/shell.js';
-
 class TarManager {
-    constructor() {
+    constructor(lonx_api) {
         this.currentArchive = null;
         this.archiveContents = [];
         this.selectedIndex = 0;
@@ -16,6 +13,7 @@ class TarManager {
         this.compressionType = 'gzip'; // none, gzip, bzip2, xz
         this.preservePermissions = true;
         this.showProgress = true;
+        this.lonx_api = lonx_api;
     }
 
     async init() {
@@ -551,7 +549,7 @@ class TarManager {
             this.setStatus('Loading archive...');
             this.showProgress(true);
             
-            const archiveData = read(filename);
+            const archiveData = this.lonx_api.fs.read(filename);
             if (!archiveData) {
                 throw new Error('Archive not found');
             }
@@ -636,7 +634,7 @@ class TarManager {
             const files = await this.collectFiles(sourcePath);
             const tarData = await this.createTarData(files);
             
-            write(filename, tarData);
+            this.lonx_api.fs.write(filename, tarData);
             this.setStatus(`Created archive ${filename} with ${files.length} entries`);
             
             this.currentArchive = filename;
@@ -664,7 +662,7 @@ class TarManager {
 
     async collectFiles(path, recursive = true) {
         const files = [];
-        const items = list(path);
+        const items = this.lonx_api.fs.list(path);
         
         if (typeof items === 'object') {
             for (const [name, content] of Object.entries(items)) {
@@ -739,11 +737,11 @@ class TarManager {
                 } else if (file.isSymlink) {
                     // Create symlink - simulated
                     const linkContent = `Link to ${file.linkTarget}`;
-                    write(targetPath, linkContent);
+                    this.lonx_api.fs.write(targetPath, linkContent);
                 } else {
                     // Extract regular file
                     const content = `Extracted content of ${file.name}`;
-                    write(targetPath, content);
+                    this.lonx_api.fs.write(targetPath, content);
                 }
                 
                 // Update progress
@@ -811,7 +809,7 @@ class TarManager {
             const newFilename = `${this.currentArchive}.${compressionType === 'gzip' ? 'gz' : compressionType}`;
             const compressedData = `Compressed version of ${this.currentArchive}`;
             
-            write(newFilename, compressedData);
+            this.lonx_api.fs.write(newFilename, compressedData);
             this.setStatus(`Compressed to ${newFilename}`);
             
         } catch (error) {
@@ -829,7 +827,7 @@ class TarManager {
             this.setStatus('Decompressing...');
             this.showProgress(true);
             
-            const compressedData = read(filename);
+            const compressedData = this.lonx_api.fs.read(filename);
             if (!compressedData) {
                 throw new Error('Compressed archive not found');
             }
@@ -838,7 +836,7 @@ class TarManager {
             const decompressedFilename = filename.replace(/\.(gz|bz2|xz|lzma)$/, '');
             const decompressedData = `Decompressed version of ${filename}`;
             
-            write(decompressedFilename, decompressedData);
+            this.lonx_api.fs.write(decompressedFilename, decompressedData);
             this.setStatus(`Decompressed to ${decompressedFilename}`);
             
         } catch (error) {
@@ -1123,10 +1121,10 @@ class TarManager {
 }
 
 // Main function
-export async function main(args) {
+export async function main(args, lonx) {
     if (args.length === 0) {
         // Launch GUI mode
-        const manager = new TarManager();
+        const manager = new TarManager(lonx);
         window.tarManager = manager;
         await manager.init();
     } else {
@@ -1137,52 +1135,52 @@ export async function main(args) {
             case 'list':
             case 'l':
             case 't':
-                await listArchive(args[1]);
+                await listArchive(args[1], lonx);
                 break;
             case 'extract':
             case 'x':
-                await extractArchive(args[1], args[2]);
+                await extractArchive(args[1], args[2], lonx);
                 break;
             case 'create':
             case 'c':
-                await createArchive(args[1], args.slice(2));
+                await createArchive(args[1], args.slice(2), lonx);
                 break;
             case 'add':
             case 'r':
-                await addToArchive(args[1], args.slice(2));
+                await addToArchive(args[1], args.slice(2), lonx);
                 break;
             case 'compress':
-                await compressFile(args[1], args[2]);
+                await compressFile(args[1], args[2], lonx);
                 break;
             case 'decompress':
-                await decompressFile(args[1]);
+                await decompressFile(args[1], lonx);
                 break;
             case 'help':
-                showCLIHelp();
+                showCLIHelp(lonx);
                 break;
             default:
-                shellPrint(`Unknown command: ${command}. Use 'tar help' for usage.`);
+                lonx.shell.print(`Unknown command: ${command}. Use 'tar help' for usage.`);
         }
     }
 }
 
-async function listArchive(filename) {
+async function listArchive(filename, lonx) {
     if (!filename) {
-        shellPrint('Usage: tar list <archive.tar[.gz|.bz2|.xz]>');
+        lonx.shell.print('Usage: tar list <archive.tar[.gz|.bz2|.xz]>');
         return;
     }
     
     try {
-        const archiveData = read(filename);
+        const archiveData = lonx.fs.read(filename);
         if (!archiveData) {
-            shellPrint(`Error: Archive '${filename}' not found`);
+            lonx.shell.print(`Error: Archive '${filename}' not found`);
             return;
         }
         
-        shellPrint(`Archive: ${filename}`);
-        shellPrint('---------------------------------------------------------------');
-        shellPrint('Permissions  Owner       Size      Date       Name');
-        shellPrint('---------------------------------------------------------------');
+        lonx.shell.print(`Archive: ${filename}`);
+        lonx.shell.print('---------------------------------------------------------------');
+        lonx.shell.print('Permissions  Owner       Size      Date       Name');
+        lonx.shell.print('---------------------------------------------------------------');
         
         const entries = [
             { name: 'README.md', size: 2048, permissions: '-rw-r--r--', owner: 'user', date: '2025-07-14' },
@@ -1192,58 +1190,58 @@ async function listArchive(filename) {
         
         entries.forEach(entry => {
             const sizeStr = entry.size.toString().padStart(8);
-            shellPrint(`${entry.permissions} ${entry.owner.padEnd(8)} ${sizeStr}   ${entry.date}  ${entry.name}`);
+            lonx.shell.print(`${entry.permissions} ${entry.owner.padEnd(8)} ${sizeStr}   ${entry.date}  ${entry.name}`);
         });
         
-        shellPrint('---------------------------------------------------------------');
-        shellPrint(`Total: ${entries.length} entries`);
+        lonx.shell.print('---------------------------------------------------------------');
+        lonx.shell.print(`Total: ${entries.length} entries`);
         
     } catch (error) {
-        shellPrint(`Error: ${error.message}`);
+        lonx.shell.print(`Error: ${error.message}`);
     }
 }
 
 async function extractArchive(filename, destination = './') {
     if (!filename) {
-        shellPrint('Usage: tar extract <archive.tar[.gz|.bz2|.xz]> [destination]');
+        lonx.shell.print('Usage: tar extract <archive.tar[.gz|.bz2|.xz]> [destination]');
         return;
     }
     
     try {
-        const archiveData = read(filename);
+        const archiveData = lonx.fs.read(filename);
         if (!archiveData) {
-            shellPrint(`Error: Archive '${filename}' not found`);
+            lonx.shell.print(`Error: Archive '${filename}' not found`);
             return;
         }
         
-        shellPrint(`Extracting '${filename}' to '${destination}'...`);
+        lonx.shell.print(`Extracting '${filename}' to '${destination}'...`);
         
         const entries = ['README.md', 'src/', 'src/main.js'];
         for (const entry of entries) {
             const targetPath = `${destination}/${entry}`.replace('//', '/');
             if (!entry.endsWith('/')) {
-                write(targetPath, `Content of ${entry}`);
-                shellPrint(`  extracted: ${entry}`);
+                lonx.fs.write(targetPath, `Content of ${entry}`);
+                lonx.shell.print(`  extracted: ${entry}`);
             } else {
-                shellPrint(`  created dir: ${entry}`);
+                lonx.shell.print(`  created dir: ${entry}`);
             }
         }
         
-        shellPrint(`✓ Extracted ${entries.length} entries`);
+        lonx.shell.print(`✓ Extracted ${entries.length} entries`);
         
     } catch (error) {
-        shellPrint(`Error: ${error.message}`);
+        lonx.shell.print(`Error: ${error.message}`);
     }
 }
 
 async function createArchive(filename, sources) {
     if (!filename || sources.length === 0) {
-        shellPrint('Usage: tar create <archive.tar> <file1> [file2] ...');
+        lonx.shell.print('Usage: tar create <archive.tar> <file1> [file2] ...');
         return;
     }
     
     try {
-        shellPrint(`Creating archive '${filename}'...`);
+        lonx.shell.print(`Creating archive '${filename}'...`);
         
         const archiveData = {
             format: 'tar',
@@ -1252,7 +1250,7 @@ async function createArchive(filename, sources) {
         };
         
         for (const source of sources) {
-            const content = read(source);
+            const content = lonx.fs.read(source);
             if (content !== null) {
                 archiveData.entries.push({
                     name: source,
@@ -1260,29 +1258,29 @@ async function createArchive(filename, sources) {
                     size: content.length,
                     permissions: '-rw-r--r--'
                 });
-                shellPrint(`  added: ${source}`);
+                lonx.shell.print(`  added: ${source}`);
             } else {
-                shellPrint(`  warning: '${source}' not found, skipping`);
+                lonx.shell.print(`  warning: '${source}' not found, skipping`);
             }
         }
         
-        write(filename, JSON.stringify(archiveData));
-        shellPrint(`✓ Created archive with ${archiveData.entries.length} entries`);
+        lonx.fs.write(filename, JSON.stringify(archiveData));
+        lonx.shell.print(`✓ Created archive with ${archiveData.entries.length} entries`);
         
     } catch (error) {
-        shellPrint(`Error: ${error.message}`);
+        lonx.shell.print(`Error: ${error.message}`);
     }
 }
 
 async function addToArchive(filename, sources) {
     if (!filename || sources.length === 0) {
-        shellPrint('Usage: tar add <archive.tar> <file1> [file2] ...');
+        lonx.shell.print('Usage: tar add <archive.tar> <file1> [file2] ...');
         return;
     }
     
     try {
         let archiveData;
-        const existing = read(filename);
+        const existing = lonx.fs.read(filename);
         
         if (existing) {
             archiveData = JSON.parse(existing);
@@ -1290,10 +1288,10 @@ async function addToArchive(filename, sources) {
             archiveData = { format: 'tar', entries: [], created: new Date().toISOString() };
         }
         
-        shellPrint(`Adding entries to '${filename}'...`);
+        lonx.shell.print(`Adding entries to '${filename}'...`);
         
         for (const source of sources) {
-            const content = read(source);
+            const content = lonx.fs.read(source);
             if (content !== null) {
                 archiveData.entries.push({
                     name: source,
@@ -1301,97 +1299,97 @@ async function addToArchive(filename, sources) {
                     size: content.length,
                     permissions: '-rw-r--r--'
                 });
-                shellPrint(`  added: ${source}`);
+                lonx.shell.print(`  added: ${source}`);
             } else {
-                shellPrint(`  warning: '${source}' not found, skipping`);
+                lonx.shell.print(`  warning: '${source}' not found, skipping`);
             }
         }
         
-        write(filename, JSON.stringify(archiveData));
-        shellPrint(`✓ Archive now contains ${archiveData.entries.length} entries`);
+        lonx.fs.write(filename, JSON.stringify(archiveData));
+        lonx.shell.print(`✓ Archive now contains ${archiveData.entries.length} entries`);
         
     } catch (error) {
-        shellPrint(`Error: ${error.message}`);
+        lonx.shell.print(`Error: ${error.message}`);
     }
 }
 
 async function compressFile(filename, compression = 'gzip') {
     if (!filename) {
-        shellPrint('Usage: tar compress <file.tar> [gzip|bzip2|xz]');
+        lonx.shell.print('Usage: tar compress <file.tar> [gzip|bzip2|xz]');
         return;
     }
     
     try {
-        const data = read(filename);
+        const data = lonx.fs.read(filename);
         if (!data) {
-            shellPrint(`Error: File '${filename}' not found`);
+            lonx.shell.print(`Error: File '${filename}' not found`);
             return;
         }
         
         const ext = compression === 'gzip' ? '.gz' : `.${compression}`;
         const compressedFilename = `${filename}${ext}`;
         
-        shellPrint(`Compressing '${filename}' with ${compression}...`);
+        lonx.shell.print(`Compressing '${filename}' with ${compression}...`);
         
         // Simulate compression
         const compressedData = `${compression.toUpperCase()}-compressed: ${data}`;
-        write(compressedFilename, compressedData);
+        lonx.fs.write(compressedFilename, compressedData);
         
-        shellPrint(`✓ Compressed to '${compressedFilename}'`);
+        lonx.shell.print(`✓ Compressed to '${compressedFilename}'`);
         
     } catch (error) {
-        shellPrint(`Error: ${error.message}`);
+        lonx.shell.print(`Error: ${error.message}`);
     }
 }
 
 async function decompressFile(filename) {
     if (!filename) {
-        shellPrint('Usage: tar decompress <file.tar.gz|.tar.bz2|.tar.xz>');
+        lonx.shell.print('Usage: tar decompress <file.tar.gz|.tar.bz2|.tar.xz>');
         return;
     }
     
     try {
-        const data = read(filename);
+        const data = lonx.fs.read(filename);
         if (!data) {
-            shellPrint(`Error: Compressed file '${filename}' not found`);
+            lonx.shell.print(`Error: Compressed file '${filename}' not found`);
             return;
         }
         
         const decompressedFilename = filename.replace(/\.(gz|bz2|xz|lzma)$/, '');
         
-        shellPrint(`Decompressing '${filename}'...`);
+        lonx.shell.print(`Decompressing '${filename}'...`);
         
         // Simulate decompression
         const decompressedData = data.replace(/^[A-Z]+-compressed: /, '');
-        write(decompressedFilename, decompressedData);
+        lonx.fs.write(decompressedFilename, decompressedData);
         
-        shellPrint(`✓ Decompressed to '${decompressedFilename}'`);
+        lonx.shell.print(`✓ Decompressed to '${decompressedFilename}'`);
         
     } catch (error) {
-        shellPrint(`Error: ${error.message}`);
+        lonx.shell.print(`Error: ${error.message}`);
     }
 }
 
 function showCLIHelp() {
-    shellPrint('LonxOS TAR Manager - CLI Mode');
-    shellPrint('');
-    shellPrint('Usage:');
-    shellPrint('  tar                                    Launch GUI mode');
-    shellPrint('  tar list <archive>                     List archive contents');
-    shellPrint('  tar extract <archive> [dest]           Extract archive');
-    shellPrint('  tar create <archive> <files...>        Create new archive');
-    shellPrint('  tar add <archive> <files...>           Add files to archive');
-    shellPrint('  tar compress <file> [method]           Compress file');
-    shellPrint('  tar decompress <file>                  Decompress file');
-    shellPrint('  tar help                               Show this help');
-    shellPrint('');
-    shellPrint('Supported compression: gzip, bzip2, xz, lzma');
-    shellPrint('');
-    shellPrint('Examples:');
-    shellPrint('  tar list backup.tar.gz');
-    shellPrint('  tar extract project.tar.bz2 /tmp/');
-    shellPrint('  tar create docs.tar *.md *.txt');
-    shellPrint('  tar compress backup.tar gzip');
+    lonx.shell.print('LonxOS TAR Manager - CLI Mode');
+    lonx.shell.print('');
+    lonx.shell.print('Usage:');
+    lonx.shell.print('  tar                                    Launch GUI mode');
+    lonx.shell.print('  tar list <archive>                     List archive contents');
+    lonx.shell.print('  tar extract <archive> [dest]           Extract archive');
+    lonx.shell.print('  tar create <archive> <files...>        Create new archive');
+    lonx.shell.print('  tar add <archive> <files...>           Add files to archive');
+    lonx.shell.print('  tar compress <file> [method]           Compress file');
+    lonx.shell.print('  tar decompress <file>                  Decompress file');
+    lonx.shell.print('  tar help                               Show this help');
+    lonx.shell.print('');
+    lonx.shell.print('Supported compression: gzip, bzip2, xz, lzma');
+    lonx.shell.print('');
+    lonx.shell.print('Examples:');
+    lonx.shell.print('  tar list backup.tar.gz');
+    lonx.shell.print('  tar extract project.tar.bz2 /tmp/');
+    lonx.shell.print('  tar create docs.tar *.md *.txt');
+    lonx.shell.print('  tar compress backup.tar gzip');
 }
 
 export { main as tar };
