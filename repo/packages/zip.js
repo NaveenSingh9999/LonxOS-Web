@@ -234,11 +234,38 @@ class ZipManager {
             }
             
             this.currentArchive = filename;
-            this.archiveContents = [
-                { name: 'example.txt', size: 1024, date: new Date().toISOString(), isDirectory: false },
-                { name: 'documents/', size: 0, date: new Date().toISOString(), isDirectory: true },
-                { name: 'documents/readme.md', size: 2048, date: new Date().toISOString(), isDirectory: false }
-            ];
+            
+            // Parse the actual archive data
+            try {
+                const parsedData = JSON.parse(archiveData);
+                if (parsedData.files && Array.isArray(parsedData.files)) {
+                    this.archiveContents = parsedData.files.map(file => ({
+                        name: file.name,
+                        size: file.size || file.content?.length || 0,
+                        date: file.date || parsedData.created || new Date().toISOString(),
+                        isDirectory: file.name.endsWith('/'),
+                        content: file.content
+                    }));
+                } else {
+                    // Handle raw content as single file
+                    this.archiveContents = [{
+                        name: filename.split('/').pop(),
+                        size: archiveData.length,
+                        date: new Date().toISOString(),
+                        isDirectory: false,
+                        content: archiveData
+                    }];
+                }
+            } catch (parseError) {
+                // If not JSON, treat as raw file
+                this.archiveContents = [{
+                    name: filename.split('/').pop(),
+                    size: archiveData.length,
+                    date: new Date().toISOString(),
+                    isDirectory: false,
+                    content: archiveData
+                }];
+            }
             
             this.setStatus(`Loaded ${this.archiveContents.length} files from ${filename}`);
             this.render();
@@ -252,21 +279,292 @@ class ZipManager {
         const filename = prompt('Enter new ZIP file name:', 'archive.zip');
         if (!filename) return;
         
-        const sourcePath = prompt('Enter source directory:', '/');
-        if (!sourcePath) return;
-        
+        // Show file picker dialog
+        await this.showFilePicker(filename);
+    }
+
+    async showFilePicker(targetFilename) {
+        const picker = document.createElement('div');
+        picker.className = 'file-picker-overlay';
+        picker.innerHTML = `
+            <div class="file-picker-dialog">
+                <div class="file-picker-header">
+                    <h3>Select Files for Archive</h3>
+                    <button id="picker-close">×</button>
+                </div>
+                <div class="file-picker-content">
+                    <div class="current-path">
+                        Path: <span id="picker-current-path">/</span>
+                        <button id="picker-refresh">Refresh</button>
+                    </div>
+                    <div class="file-picker-list" id="picker-file-list">
+                        <!-- Files will be loaded here -->
+                    </div>
+                    <div class="selected-files">
+                        <h4>Selected Files:</h4>
+                        <div id="selected-files-list"></div>
+                    </div>
+                </div>
+                <div class="file-picker-footer">
+                    <button id="picker-create">Create Archive</button>
+                    <button id="picker-cancel">Cancel</button>
+                </div>
+            </div>
+        `;
+
+        const pickerStyle = document.createElement('style');
+        pickerStyle.textContent = `
+            .file-picker-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100vw;
+                height: 100vh;
+                background: rgba(0,0,0,0.8);
+                z-index: 2000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .file-picker-dialog {
+                background: #2d2d2d;
+                border: 1px solid #666;
+                border-radius: 8px;
+                width: 600px;
+                max-height: 80vh;
+                color: white;
+                font-family: 'Courier New', monospace;
+            }
+            .file-picker-header {
+                padding: 15px;
+                border-bottom: 1px solid #444;
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+            }
+            .file-picker-header h3 {
+                margin: 0;
+                color: #00ff88;
+            }
+            .file-picker-content {
+                padding: 15px;
+                max-height: 400px;
+                overflow-y: auto;
+            }
+            .current-path {
+                margin-bottom: 15px;
+                padding: 8px;
+                background: #1a1a1a;
+                border-radius: 4px;
+            }
+            .file-picker-list {
+                background: #1a1a1a;
+                border: 1px solid #444;
+                max-height: 200px;
+                overflow-y: auto;
+                margin-bottom: 15px;
+            }
+            .picker-file-item {
+                padding: 8px 12px;
+                border-bottom: 1px solid #333;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+            }
+            .picker-file-item:hover {
+                background: #333;
+            }
+            .picker-file-item.selected {
+                background: #00ff88;
+                color: black;
+            }
+            .selected-files {
+                background: #1a1a1a;
+                padding: 10px;
+                border-radius: 4px;
+                max-height: 100px;
+                overflow-y: auto;
+            }
+            .file-picker-footer {
+                padding: 15px;
+                border-top: 1px solid #444;
+                display: flex;
+                gap: 10px;
+                justify-content: flex-end;
+            }
+            .file-picker-footer button, .current-path button, .file-picker-header button {
+                background: #404040;
+                color: white;
+                border: 1px solid #666;
+                padding: 8px 15px;
+                cursor: pointer;
+                border-radius: 4px;
+            }
+            .file-picker-footer button:hover, .current-path button:hover {
+                background: #505050;
+                border-color: #00ff88;
+            }
+            .file-picker-header button {
+                width: 30px;
+                height: 30px;
+                padding: 0;
+                font-size: 18px;
+            }
+        `;
+
+        document.head.appendChild(pickerStyle);
+        document.body.appendChild(picker);
+
+        let currentPath = '/';
+        let selectedFiles = new Set();
+
+        const loadDirectory = (path) => {
+            const fileList = document.getElementById('picker-file-list');
+            const pathElement = document.getElementById('picker-current-path');
+            pathElement.textContent = path;
+
+            // Get directory contents from LonxOS filesystem
+            try {
+                const files = this.lonx.fs.list(path) || [];
+                
+                let html = '';
+                
+                // Add parent directory option if not at root
+                if (path !== '/') {
+                    html += `
+                        <div class="picker-file-item" data-path="${path}/.." data-type="parent">
+                            <span>📁 ..</span>
+                        </div>
+                    `;
+                }
+
+                files.forEach(file => {
+                    const fullPath = path === '/' ? `/${file}` : `${path}/${file}`;
+                    const isDir = this.isDirectory(fullPath);
+                    const icon = isDir ? '📁' : '📄';
+                    const isSelected = selectedFiles.has(fullPath) ? 'selected' : '';
+                    
+                    html += `
+                        <div class="picker-file-item ${isSelected}" data-path="${fullPath}" data-type="${isDir ? 'directory' : 'file'}">
+                            <span>${icon} ${file}</span>
+                        </div>
+                    `;
+                });
+
+                fileList.innerHTML = html;
+            } catch (error) {
+                fileList.innerHTML = '<div style="padding: 20px; text-align: center;">Error loading directory</div>';
+            }
+        };
+
+        const updateSelectedList = () => {
+            const selectedList = document.getElementById('selected-files-list');
+            if (selectedFiles.size === 0) {
+                selectedList.innerHTML = '<em>No files selected</em>';
+            } else {
+                selectedList.innerHTML = Array.from(selectedFiles).map(file => 
+                    `<div>${file} <button onclick="this.parentElement.remove(); selectedFiles.delete('${file}'); updateSelectedList();">×</button></div>`
+                ).join('');
+            }
+        };
+
+        // Event handlers
+        document.getElementById('picker-close').onclick = () => {
+            picker.remove();
+            pickerStyle.remove();
+        };
+
+        document.getElementById('picker-cancel').onclick = () => {
+            picker.remove();
+            pickerStyle.remove();
+        };
+
+        document.getElementById('picker-refresh').onclick = () => {
+            loadDirectory(currentPath);
+        };
+
+        document.getElementById('picker-create').onclick = async () => {
+            if (selectedFiles.size === 0) {
+                alert('Please select at least one file');
+                return;
+            }
+
+            try {
+                this.setStatus('Creating archive...');
+                const archiveData = {
+                    files: [],
+                    created: new Date().toISOString()
+                };
+
+                for (const filePath of selectedFiles) {
+                    try {
+                        const content = this.lonx.fs.read(filePath);
+                        if (content !== null) {
+                            archiveData.files.push({
+                                name: filePath.startsWith('/') ? filePath.substring(1) : filePath,
+                                content: content,
+                                size: content.length,
+                                date: new Date().toISOString()
+                            });
+                        }
+                    } catch (fileError) {
+                        console.warn(`Could not read file: ${filePath}`, fileError);
+                    }
+                }
+
+                this.lonx.fs.write(targetFilename, JSON.stringify(archiveData, null, 2));
+                this.setStatus(`Created archive ${targetFilename} with ${archiveData.files.length} files`);
+                
+                picker.remove();
+                pickerStyle.remove();
+
+            } catch (error) {
+                this.setStatus(`Error creating archive: ${error.message}`);
+            }
+        };
+
+        // File list click handler
+        document.getElementById('picker-file-list').onclick = (e) => {
+            const item = e.target.closest('.picker-file-item');
+            if (!item) return;
+
+            const path = item.dataset.path;
+            const type = item.dataset.type;
+
+            if (type === 'parent') {
+                const parentPath = currentPath.split('/').slice(0, -1).join('/') || '/';
+                currentPath = parentPath;
+                loadDirectory(currentPath);
+            } else if (type === 'directory') {
+                currentPath = path;
+                loadDirectory(currentPath);
+            } else if (type === 'file') {
+                if (selectedFiles.has(path)) {
+                    selectedFiles.delete(path);
+                    item.classList.remove('selected');
+                } else {
+                    selectedFiles.add(path);
+                    item.classList.add('selected');
+                }
+                updateSelectedList();
+            }
+        };
+
+        // Initial load
+        loadDirectory(currentPath);
+        updateSelectedList();
+
+        // Make updateSelectedList available globally for the inline onclick handlers
+        window.updateSelectedList = updateSelectedList;
+        window.selectedFiles = selectedFiles;
+    }
+
+    isDirectory(path) {
         try {
-            this.setStatus('Creating archive...');
-            const zipData = JSON.stringify({ 
-                files: [], 
-                created: new Date().toISOString() 
-            });
-            
-            this.lonx.fs.write(filename, zipData);
-            this.setStatus(`Created archive ${filename}`);
-            
-        } catch (error) {
-            this.setStatus(`Error: ${error.message}`);
+            const files = this.lonx.fs.list(path);
+            return Array.isArray(files);
+        } catch {
+            return false;
         }
     }
 
@@ -282,7 +580,9 @@ class ZipManager {
             for (const file of this.archiveContents) {
                 if (!file.isDirectory) {
                     const targetPath = `${this.extractPath}${file.name}`;
-                    this.lonx.fs.write(targetPath, `Extracted content of ${file.name}`);
+                    // Use the actual file content if available
+                    const content = file.content || `Extracted content of ${file.name}`;
+                    this.lonx.fs.write(targetPath, content);
                 }
             }
             
@@ -300,7 +600,9 @@ class ZipManager {
         if (!file.isDirectory) {
             try {
                 const targetPath = `${this.extractPath}${file.name}`;
-                this.lonx.fs.write(targetPath, `Extracted content of ${file.name}`);
+                // Use the actual file content if available
+                const content = file.content || `Extracted content of ${file.name}`;
+                this.lonx.fs.write(targetPath, content);
                 this.setStatus(`Extracted ${file.name} to ${this.extractPath}`);
             } catch (error) {
                 this.setStatus(`Error extracting: ${error.message}`);
