@@ -1,8 +1,8 @@
 // LonxOS TAR Archive Manager
 // Advanced GUI-based TAR/TAR.GZ file manager with CLI interface
 
-import { read, write, list } from '../../../os/fs.js';
-import { shellPrint } from '../../../os/shell.js';
+import { read, write, list } from 'os/fs.js';
+import { shellPrint } from 'os/shell.js';
 
 class TarManager {
     constructor() {

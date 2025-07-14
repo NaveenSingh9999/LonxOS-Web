@@ -1,8 +1,8 @@
 // LonxOS ZIP Archive Manager
 // Advanced GUI-based ZIP file manager with CLI interface
 
-import { read, write, list } from '../../../os/fs.js';
-import { shellPrint } from '../../../os/shell.js';
+import { read, write, list } from 'os/fs.js';
+import { shellPrint } from 'os/shell.js';
 
 class ZipManager {
     constructor() {
