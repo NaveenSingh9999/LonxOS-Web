@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LonxRender Test Launcher</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 40px;
+            background: linear-gradient(135deg, #1a1a1a, #2d2d2d);
+            color: white;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .description {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+            opacity: 0.8;
+            line-height: 1.6;
+        }
+        
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin: 40px 0;
+        }
+        
+        .test-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 30px;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .test-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.15);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .test-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+        }
+        
+        .test-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #667eea;
+        }
+        
+        .test-description {
+            opacity: 0.8;
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+        
+        .launch-btn {
+            background: linear-gradient(45deg, #667eea, #764ba2);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 500;
+            padding: 12px 24px;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        
+        .launch-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+        
+        .features {
+            margin-top: 60px;
+            text-align: left;
+        }
+        
+        .features h2 {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 30px;
+            color: #667eea;
+        }
+        
+        .feature-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .feature {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .feature h4 {
+            margin: 0 0 10px 0;
+            color: #667eea;
+        }
+        
+        .feature p {
+            margin: 0;
+            opacity: 0.8;
+            font-size: 14px;
+        }
+        
+        .status {
+            margin-top: 40px;
+            padding: 20px;
+            border-radius: 8px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .warning {
+            background: rgba(255, 193, 7, 0.1);
+            border-color: #ffc107;
+            color: #ffc107;
+        }
+        
+        .success {
+            background: rgba(40, 167, 69, 0.1);
+            border-color: #28a745;
+            color: #28a745;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🌐 LonxRender Test Launcher</h1>
+        <p class="description">
+            Test the native browser engine capabilities of LonxOS. 
+            LonxRender provides true web rendering without iframe limitations, 
+            featuring WebGL support, JavaScript sandboxing, and modern web standards.
+        </p>
+        
+        <div class="test-grid">
+            <div class="test-card" onclick="launchBrowser()">
+                <div class="test-icon">🌐</div>
+                <div class="test-title">Main Browser</div>
+                <div class="test-description">
+                    Launch the full LonxRender browser with all features enabled. 
+                    Test navigation, tabs, bookmarks, and real-world websites.
+                </div>
+                <button class="launch-btn">Launch Browser</button>
+            </div>
+            
+            <div class="test-card" onclick="launchWebGL()">
+                <div class="test-icon">🎮</div>
+                <div class="test-title">WebGL Test</div>
+                <div class="test-description">
+                    Test hardware-accelerated 3D graphics rendering with custom shaders, 
+                    real-time animations, and interactive controls.
+                </div>
+                <button class="launch-btn">Test WebGL</button>
+            </div>
+            
+            <div class="test-card" onclick="launchWithURL('https://github.com')">
+                <div class="test-icon">📁</div>
+                <div class="test-title">GitHub Test</div>
+                <div class="test-description">
+                    Test complex website rendering with GitHub's interface, 
+                    JavaScript interactions, and dynamic content loading.
+                </div>
+                <button class="launch-btn">Open GitHub</button>
+            </div>
+            
+            <div class="test-card" onclick="launchWithURL('https://youtube.com')">
+                <div class="test-icon">📺</div>
+                <div class="test-title">YouTube Test</div>
+                <div class="test-description">
+                    Test video platform rendering, media elements, 
+                    and complex JavaScript applications.
+                </div>
+                <button class="launch-btn">Open YouTube</button>
+            </div>
+            
+            <div class="test-card" onclick="launchConsoleTest()">
+                <div class="test-icon">🔧</div>
+                <div class="test-title">Console Test</div>
+                <div class="test-description">
+                    Test the developer console with JavaScript execution, 
+                    command evaluation, and debugging capabilities.
+                </div>
+                <button class="launch-btn">Test Console</button>
+            </div>
+            
+            <div class="test-card" onclick="launchSandboxTest()">
+                <div class="test-icon">🛡️</div>
+                <div class="test-title">Security Test</div>
+                <div class="test-description">
+                    Test JavaScript sandboxing, security restrictions, 
+                    and safe execution environment isolation.
+                </div>
+                <button class="launch-btn">Test Security</button>
+            </div>
+        </div>
+        
+        <div class="features">
+            <h2>🚀 LonxRender Features</h2>
+            <div class="feature-list">
+                <div class="feature">
+                    <h4>🔺 True Native Rendering</h4>
+                    <p>Custom HTML/CSS parser without iframe limitations</p>
+                </div>
+                <div class="feature">
+                    <h4>🎮 WebGL Support</h4>
+                    <p>Hardware-accelerated 3D graphics and shaders</p>
+                </div>
+                <div class="feature">
+                    <h4>🛡️ JavaScript Sandbox</h4>
+                    <p>Secure script execution with Web Workers</p>
+                </div>
+                <div class="feature">
+                    <h4>🗂️ Multi-Tab Support</h4>
+                    <p>Full tabbed browsing experience</p>
+                </div>
+                <div class="feature">
+                    <h4>⭐ Bookmarks & History</h4>
+                    <p>Persistent data storage and management</p>
+                </div>
+                <div class="feature">
+                    <h4>🔧 Developer Console</h4>
+                    <p>Real-time debugging and inspection tools</p>
+                </div>
+                <div class="feature">
+                    <h4>🎨 Modern UI</h4>
+                    <p>Beautiful interface with smooth animations</p>
+                </div>
+                <div class="feature">
+                    <h4>🌐 Web Standards</h4>
+                    <p>CSS3, HTML5, ES6+, and modern APIs</p>
+                </div>
+            </div>
+        </div>
+        
+        <div id="status" class="status">
+            Ready to test LonxRender browser engine. Click any test above to begin.
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(message, type = 'info') {
+            const status = document.getElementById('status');
+            status.textContent = message;
+            status.className = `status ${type}`;
+        }
+
+        function launchBrowser(url = null) {
+            updateStatus('Launching LonxRender browser...', 'info');
+            
+            try {
+                // Check if running in LonxOS
+                if (typeof window.lonxWM !== 'undefined') {
+                    // Launch using LonxOS Window Manager
+                    const windowConfig = {
+                        title: '🌐 LonxRender - Native Browser',
+                        icon: '🌐',
+                        url: `apps/lonxrender/index.html${url ? `?url=${encodeURIComponent(url)}` : ''}`,
+                        width: Math.floor(window.innerWidth * 0.8),
+                        height: Math.floor(window.innerHeight * 0.8),
+                        x: Math.floor(window.innerWidth * 0.1),
+                        y: Math.floor(window.innerHeight * 0.1),
+                        resizable: true,
+                        minimizable: true,
+                        maximizable: true,
+                        closable: true
+                    };
+
+                    const windowId = window.lonxWM.createWindow(windowConfig);
+                    updateStatus(`Browser launched in window ${windowId}`, 'success');
+                    return windowId;
+                } else {
+                    // Fallback: open in new window/tab
+                    const targetUrl = url ? `index.html?url=${encodeURIComponent(url)}` : 'index.html';
+                    window.open(targetUrl, '_blank', 'width=1200,height=800');
+                    updateStatus('Browser opened in new window', 'success');
+                }
+            } catch (error) {
+                console.error('Launch error:', error);
+                updateStatus(`Launch failed: ${error.message}`, 'warning');
+            }
+        }
+
+        function launchWithURL(url) {
+            updateStatus(`Launching browser with ${url}...`, 'info');
+            launchBrowser(url);
+        }
+
+        function launchWebGL() {
+            updateStatus('Launching WebGL test suite...', 'info');
+            launchBrowser('./webgl-test.html');
+        }
+
+        function launchConsoleTest() {
+            updateStatus('Launching browser with console enabled...', 'info');
+            const browser = launchBrowser();
+            
+            // Open console after a delay
+            setTimeout(() => {
+                updateStatus('Press F12 or click console button to test developer tools', 'info');
+            }, 2000);
+        }
+
+        function launchSandboxTest() {
+            updateStatus('Launching security sandbox test...', 'info');
+            const testUrl = 'data:text/html,<html><head><title>Sandbox Test</title></head><body><h1>JavaScript Sandbox Test</h1><p>This page tests the security sandbox. Open the console and try executing JavaScript commands.</p><script>console.log("Sandbox test loaded");</script></body></html>';
+            launchBrowser(testUrl);
+        }
+
+        // Check environment and show appropriate status
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof window.lonxWM !== 'undefined') {
+                updateStatus('LonxOS environment detected. Ready to launch browser windows.', 'success');
+            } else {
+                updateStatus('Running in standalone mode. Browser will open in new windows.', 'warning');
+            }
+        });
+
+        // Global keyboard shortcuts
+        document.addEventListener('keydown', function(e) {
+            if (e.ctrlKey && e.key === 'b') {
+                e.preventDefault();
+                launchBrowser();
+            }
+            if (e.key === 'F12') {
+                e.preventDefault();
+                launchConsoleTest();
+            }
+        });
+    </script>
+</body>
+</html>

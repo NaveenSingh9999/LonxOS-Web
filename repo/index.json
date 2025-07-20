@@ -1,5 +1,13 @@
 [
   {
+    "name": "browser",
+    "desc": "LonxRender native browser engine with WebGL support",
+    "version": "1.0.0",
+    "url": "packages/browser.js",
+    "checksum": "sha256:browser-v1.0.0",
+    "lastUpdated": "2025-07-14T00:00:00Z"
+  },
+  {
     "name": "wget",
     "desc": "Advanced web downloader with progress tracking",
     "version": "2.0.0",
